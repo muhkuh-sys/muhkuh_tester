@@ -1,0 +1,431 @@
+Muhkuh Tester
+=============
+Christoph Thelen <cthelen@hilscher.com>
+:Author Initials: CT
+
+
+[[About, About]]
+== About
+
+Muhkuh is a production test utility for the Hilscher netX network controller family.
+There a two different interfaces for the tool: a graphical one and a command line interface. This document describes the command line interface.
+
+Test cases are written in the LUA scripting language (http://www.lua.org/). The test scripts runs on a PC. It can communicate via several interfaces with a netX chip:
+
+ * USB
+ * UART
+ * JTAG
+
+Like LUA the Muhkuh tool is open source. It is hosted on Sourceforge: http://sourceforge.net/projects/muhkuh .
+
+
+[[Quick_start, Quick start]]
+== Quick start
+
+This chapter shows how to get the system running very quickly. It references to other chapters for the explanations.
+
+[[Preparations, Preparations]]
+=== Preparations
+
+Usually a command line test is delivered as a ZIP archive. Extract it to a folder of your choice. If you are not sure how to extract a ZIP archive, get 7zip (http://www.7-zip.org/).
+The extraction creates a new subfolder. This subfolder is the called the 'root folder' of the test. The root folder always contains a file called +system.lua+.
+Details on the test structure can be found in the chapter <<System_architecture>>.
+
+[[Show_all_tests_and_their_parameters, Show all tests and their parameters]]
+=== Show all tests and their parameters
+
+Open a command prompt (+cmd.exe+) in this subfolder. Now run the command +lua.exe{nbsp}system.lua{nbsp}--show-parameters+. This shows all available test cases with their parameters.
+The chapter <<Test_case_parameters>> explains this topic in detail.
+
+.Example output for the +--show-parameter+ command.
+-----------------------------------------------------------------------------
+ lua.exe system.lua --show-parameters
+ 
+ All parameters:
+ 
+   Test case 01: 'RAMTEST_IS42S32200L7BLI'
+     01:general_ctrl   The complete value for the netX general_ctrl register.
+                       default: 0x030d0001
+     01:timing_ctrl    Bits 0 - 19 for the netX timing_ctrl register.
+                       default: 0x01a23151
+     01:mr             The complete value for the netX mr register.
+                       default: 0x33
+     01:size_exponent  The size exponent.
+                       default: 23
+     01:interface      This is the interface where the RAM is connected. It
+                       must be either MEM for the memory interface or HIF for
+                       the host interface.
+                       default: MEM
+     01:checks         This determines which checks to run. Select one or more
+                       values from this list and separate them with
+                       commata: 08BIT, 16BIT, 32BIT and BURST.
+                       default: 32BIT,BURST
+     01:loops          The number of loops to run.
+                       default: 1
+-----------------------------------------------------------------------------
+
+[[Run_all_tests, Run all tests]]
+=== Run all tests
+
+Execute the command +lua.exe system.lua -i ASK+ to run all of the tests with their default parameters. First it shows all available interfaces to a netX hardware and prompts you for the one to use.
+Then the tests are executed. The return code is +0+ if all tests succeeded. It is +1+ if an error occured. The chapter <<Return_codes>> explains this in detail.
+
+[TIP]
+Show the return code in the windows command prompt with +echo %ERRORLEVEL%+.
+
+
+.Example 1: Run all tests with their default parameters. Ask for the interface.
+-----------------------------------------------------------------------------
+ lua.exe system.lua -i ASK
+-----------------------------------------------------------------------------
+
+Use a fixed interface by replacing the +-i ASK+ with a pattern for the interface name.
+In the simplest case the pattern is a part of the interface name, e.g. +COM10+ if you would like to connect to a netX board on COM10. The chapter <<Selecting_the_interface>> describes this in detail.
+
+.Example 2: Run all tests with their default parameters. Use COM10 for communication with the netX.
+-----------------------------------------------------------------------------
+ lua.exe system.lua -i COM10
+-----------------------------------------------------------------------------
+
+[[Run_only_a_selection_of_tests, Run only a selection of tests]]
+=== Run only a selection of tests
+
+Select the tests to run by their numeric ID. The ID is shown in the output of the +--show-parameters+ command.
+
+In the example above, the test +RAMTEST_IS42S32200L7BLI+ has the numeric ID +1+.
+
+.Example 1: Run only the test with the numeric ID 1. Use COM10 for communication with the netX.
+-----------------------------------------------------------------------------
+ lua.exe system.lua -i COM10 1
+-----------------------------------------------------------------------------
+
+.Example 2: Run only the tests with the numeric ID 2 and 5. Use COM10 for communication with the netX.
+-----------------------------------------------------------------------------
+ lua.exe system.lua -i COM10 2 5
+-----------------------------------------------------------------------------
+
+[[Run_all_tests_with_modified_parameters, Run all tests with modified parameters]]
+=== Run all tests with modified parameters
+
+The values for the parameters can be changed with the +-p+ option. It has the form +-p+ _TEST-CASE-ID_$$:$$_PARAMETER_$$=$$_VALUE_ .
+The combination _TEST-CASE-ID_$$:$$_PARAMETER_ can be copied from the output of the +--show-parameters+ command.
+
+.Example 1: set the +loops+ parameter from the +RAMTEST_IS42S32200L7BLI+ test to the value +4+.
+-----------------------------------------------------------------------------
+ -p 01:loops=4
+-----------------------------------------------------------------------------
+
+.Example 2: set the +checks+ parameter from the +RAMTEST_IS42S32200L7BLI+ test to the value +08BIT,16BIT,32BIT,BURST+.
+-----------------------------------------------------------------------------
+ -p 01:checks=08BIT,16BIT,32BIT,BURST
+-----------------------------------------------------------------------------
+
+[IMPORTANT]
+If the _VALUE_ contains spaces, it must be put in quotes. Example: +-p{nbsp}03:some_text="a{nbsp}b{nbsp}c"+
+
+The following example modifies a few parameters of the RAMTEST_IS42S32200L7BLI test. It sets the number of loops to 4 and runs all available checks.
+
+.Example 3: Run all tests with modified parameters.
+-----------------------------------------------------------------------------
+ lua.exe system.lua -p 01:loops=4 -p 01:checks=08BIT,16BIT,32BIT,BURST
+-----------------------------------------------------------------------------
+
+
+
+[[System_architecture, System architecture]]
+== System architecture
+
+This chapter gives a quick overview of the Muhkuh system and the tester framework. It is intended for users of the Muhkuh CLI application and therefore does not cover all technical details.
+
+=== Muhkuh overview
+
+The Muhkuh system is basically an extension for the LUA interpreter. It provides a communication channel from a LUA script to a netX based hardware.
+This means a LUA script running on a standard PC can communicate with a netX board. The communication can use several transport channels like UART, USB or JTAG.
+
+The Muhkuh extension provides just a small set of functions to the LUA interpreter:
+
+READ::
+  Read data from the netX.
+  This can be done with a single 8, 16 or 32 bit value or a memory array.
+
+WRITE::
+  Write data to the netX.
+  Like the read command this can be done with a single 8, 16 or 32 bit value or a memory array.
+
+CALL::
+  Call a function on the netX and capture it's output.
+
+With these simple building blocks it is possible to construct complex tasks like testing an SDRAM:
+
+- Setup the netX SDRAM controller with a number of WRITE commands.
+- Download an SDRAM test function with a WRITE command.
+- Execute the SDRAM test function with a CALL command.
+- Read the return code of the test with a READ command.
+
+=== The CLI tester
+
+The Muhkuh system also provides a framework to run the test cases. This chapter describes all components of the framework.
+
+The root folder of a test contains a LUA script called +system.lua+. This is the start script for the test. It has the following functions:
+
+- Add the subfolders +lua+ and +lua_plugins+ to the search paths for LUA modules and interpreter extensions.
+- Load a defined set of standard modules and interpreter extensions.
+- List all test cases.
+- Hand control over to the +test_system+ module.
+
+The +test_system+ module contains the main logic for the test. It has the following functions:
+
+- Load all the test cases specified in the +system.lua+ start script.
+- Parse the command line arguments.
+- Validate all parameters for the test cases.
+- Open the connection to the netX.
+- Run all selected tests and capture the output.
+- Show the test result.
+
+The test cases are stored in separate files, the test case files.
+The filename of a test case file must have the fixed form +test+$$$$_NUMBER_$$$$+.lua+ .
+_NUMBER_ is the numeric ID of the test. It must have 2 digits filled up with zeros.
+
+.Example: filename of the test with the numeric ID 4.
+-----------------------------------------------------------------------------
+ test04.lua
+-----------------------------------------------------------------------------
+
+All information about a test case is stored in the test case file. The rest of the system is generic.
+
+A test case file provides to following informations:
+
+- The name of the test. (e.g. "+RAMTEST_IS42S32200L7BLI+")
+- All available parameters.
+- A +run+ function which implements the test code.
+
+The +run+ function checks if a certain functionality is working correctly or not.
+It can use all LUA functions and extensions available on the system for this task. Of course this includes the Muhkuh communication to the netX board.
+
+The +run+ function returns the value +true+ if the test case was successful, i.e. the tested functionality is working correctly.
+
+If the test case failed, it throws an error, which is then catched by the +test_system+ module. This includes also run-time errors of the +run+ function.
+
+
+[[User_Interface, User Interface]]
+== User Interface
+
+This chapter describes the user interface. It shows how to run the program in the chapter <<Running_Muhkuh_CLI>> and describes all command line arguments in the chapter <<The_command_line_arguments>>.
+The return codes are explained in chapter <<Return_codes>>.
+
+[[Running_Muhkuh_CLI, Running Muhkuh CLI]]
+=== Running Muhkuh CLI
+
+To run the test, first change to the folder containing the system script `system.lua`. In the example below this is `C:\muhkuh_console`.
+Then execute the lua interpreter with the system script and parameters as arguments. The example has two arguments: +-i+ and +ASK+. This prompts the user to select an interface to the netX.
+The chapter <<The_command_line_arguments>> has more details on the available command line arguments.
+
+.Example commands to run Muhkuh
+-----------------------------------------------------------------------------
+ cd C:\muhkuh_console
+ lua.exe system.lua -i ASK
+-----------------------------------------------------------------------------
+
+[[Return_codes, Return codes]]
+=== Return codes
+
+The script returns a status code to indicate success or error.
+
+A value of +0+ means all selected tests were successful and no errors were detected.
+
+A value of +1+ indicates an error in either argument parsing, connection handling or the test execution. 'STDOUT' and 'STDERR' contains more information about the error.
+If logging was enabled, all problems with the connection handling and the test execution are also written to the log file.
+
+[[The_command_line_arguments, The command line arguments]]
+=== The command line arguments
+
+This chapter describes the command line arguments.
+
++-l+ _LOGFILE_::
++--logfile+ _LOGFILE_::
+  Write the output of all executed test cases to the file _LOGFILE_.
+
+
++-i+ _INTERFACE-PATTERN_::
++--interface+ _INTERFACE-PATTERN_::
+  Select the first interface which matches the _INTERFACE-PATTERN_.
+  The special value `ASK` for the parameter _INTERFACE-PATTERN_ shows a menu with all selected interfaces and prompts the user to select one.
+  The chapter <<Selecting_the_interface>> describes the pattern in details.
+
+
++--show-parameters+::
+  Show all available parameters for all test cases.
+  Do not run any tests.
+
+
++-p+ _TEST-CASE-ID_$$:$$_PARAMETER_$$=$$_VALUE_::
++--parameter+ _TEST-CASE-ID_$$:$$_PARAMETER_$$=$$_VALUE_::
+  Set the parameter _PARAMETER_ of test case _TEST-CASE-ID_ to the value _VALUE_. The chapter <<Test_case_parameters>> describes this topic in detail.
+
+
+_NUMBER_::
+  One or more numbers select the test cases to run. The numbers are the numeric IDs of the selected test cases.
+  If no numbers are specified, all tests are run.
+
+
+
+[[Selecting_the_interface, Selecting_the_interface]]
+=== Selecting the interface
+
+The +-i+ or +--interface+ argument selects the interface to the netX with a pattern.
+The pattern is a regular expression which is applied to the names of all detected interfaces. The first interface with a match is selected. Matching is done with the LUA function +string.match+.
+The special value +ASK+ for the pattern requests the user to select an interface by typing a number with the keyboard.
+
+.Example output of the manual plugin selection.
+-----------------------------------------------------------------------------
+ Detecting interfaces with plugin romloader_uart
+ Found 3 interfaces with plugin romloader_uart
+ Found a total of 3 interfaces with 2 plugins
+ 
+ Please select the interface:
+ 1: romloader_uart_COM1 (romloader_uart) Used: false, Valid: true
+ 2: romloader_uart_COM2 (romloader_uart) Used: false, Valid: true
+ 3: romloader_uart_COM10 (romloader_uart) Used: false, Valid: true
+ R: rescan
+ C: cancel
+ >
+-----------------------------------------------------------------------------
+
+The example shows that 3 interfaces were detected in this order:
+
+. +romloader_uart_COM1+
+. +romloader_uart_COM2+
+. +romloader_uart_COM10+
+
+Now we simulate the selection procedure with the pattern +COM10+:
+
+. The string "romloader_uart_COM1" does not match the pattern "COM10". +
++string.match("romloader_uart_COM1", "COM10")+ returns +nil+
+. The string "romloader_uart_COM2" does not match the pattern "COM10". +
++string.match("romloader_uart_COM2", "COM10")+ returns +nil+
+. The string "romloader_uart_COM10" matches the pattern "COM10". +
++string.match("romloader_uart_COM10", "COM10")+ returns "+COM10+" +
+Select the plugin +romloader_uart_COM10+.
+
+Next we simulate the selection procedure with the pattern +uart+:
+
+. The string "romloader_uart_COM1" matches the pattern "uart". +
++string.match("romloader_uart_COM1", "uart")+ returns "+uart+"
+Select the plugin +romloader_uart_COM1+.
+
+
+[[Test_case_parameters, Test case parameters]]
+=== Test case parameters
+
+A good test case checks for one clearly defined functionality.
+A very good test case combines checks for similar functionality and allows the test developer to adapt to the small differences with parameters.
+This way one code base is used for a lot of test cases, which has a lot of opportunities. The SDRAM test is an example for such an adjustable test.
+
+The test case paramerters are defined at the development time of the test. However in some situations it is desirable to change the parameters of a test case for one run.
+One use case for this is the provocation of an error with wrong parameters.
+Other parameters like the number of loops for one test case should be low in a
+production environment to save time. In a test and repair department it can be increased for endurance tests or measurements.
+
+The parameters for all test cases are shown with the +--show-parameters+ command.
+
+.Example output for the +--show-parameter+ command for the SDRAM test.
+-----------------------------------------------------------------------------
+ lua.exe system.lua --show-parameters
+ 
+ All parameters:
+ 
+   Test case 01: 'RAMTEST_IS42S32200L7BLI'
+     01:general_ctrl<1>  The complete value for the netX general_ctrl register.<2>
+                       default: 0x030d0001<3>
+
+ ...
+-----------------------------------------------------------------------------
+<1> The numeric test case ID and the parameter name.
+<2> The help text for the parameter.
+<3> The default value for the parameter.
+
+It displays a combination of the modules numeric ID, a colon and the parameter name. In the example above this is +01:general_ctrl+.
++01+ is the numeric ID of the test case and +general_ctrl+ is the parameter name.
+
+To change the value for this parameter from it's default +0x030d0001+ to something else, the +-p+ or +--parameter+ argument is used.
+It is followed by 3 values:
+
+_TEST-CASE-ID_::
+  The test case ID.
+_PARAMETER_::
+  The parameter name.
+_VALUE_::
+  The new value for the parameter.
+
+The 3 values are combined in the form _TEST-CASE-ID_$$:$$_PARAMETER_$$=$$_VALUE_ .
+
+The test case ID can be numeric or text. In the example above, the numeric ID is +1+. The text ID is +RAMTEST_IS42S32200L7BLI+.
+
+The following 2 examples do the same thing. Both set the parameter +general_ctrl+ of test case +1+ to the value +0x030d0111+:
+
+.Example 1
+-----------------------------------------------------------------------------
+ -p 01:general_ctrl=0x030d0111
+-----------------------------------------------------------------------------
+
+.Example 1
+-----------------------------------------------------------------------------
+ -p RAMTEST_IS42S32200L7BLI:general_ctrl=0x030d0111
+-----------------------------------------------------------------------------
+
+The +general_ctrl+ parameter expects an unsigned 32 bit number as a value. If
+the value is not a number or exceeds the range of a valid unsigned 32 bit
+number, the tester framework throws an error and does not start a test.
+
+Other parameters may have different restrictions. As the check of the value
+can be freely implemented with a function, each test case can define it's own custom restrictions.
+However there are 3 common restrictions which are provided by the tester framework.
+
+unsigned 32 bit value::
+  The value must be a number between 0 and 0xffffffff.
+single choice::
+  The value is a string. It must be one out of a list of allowed strings.
+multiple choice::
+  The value is one string or several strings separated by comma. Each string must be one out of a list of allowed strings. The order of the strings does not matter.
+
+.Example for a single choice parameter.
+-----------------------------------------------------------------------------
+ ...
+     01:interface      This is the interface where the RAM is connected. It
+                       must be either MEM for the memory interface or HIF for
+                       the host interface.
+                       default: MEM
+-----------------------------------------------------------------------------
+
+In this single choice example, the list of allowed values is "MEM" and "HIF". This means the parameter can either take the value "MEM" or "HIF", but nothing else.
+
+
+.Example for a multiple choice parameter.
+-----------------------------------------------------------------------------
+ ...
+     01:checks         This determines which checks to run. Select one or more
+                       values from this list and separate them with
+                       commata: 08BIT, 16BIT, 32BIT and BURST.
+                       default: 32BIT,BURST
+ ...
+-----------------------------------------------------------------------------
+
+In this multiple choice example, the list of allowed values is "08BIT", "16BIT", "32BIT" and "BURST". This means the parameter can be one of these values or a comma separated combination of them.
+
+.Example 1: different combinations
+-----------------------------------------------------------------------------
+ -p 01:checks=08BIT
+ 
+ -p 01:checks=BURST,16BIT
+ 
+ -p 01:checks=16BIT,32BIT,BURST
+-----------------------------------------------------------------------------
+
+.Example 2: this is the same
+-----------------------------------------------------------------------------
+ -p 01:checks=32BIT,BURST
+
+ -p 01:checks=BURST,32BIT
+-----------------------------------------------------------------------------
+
+
