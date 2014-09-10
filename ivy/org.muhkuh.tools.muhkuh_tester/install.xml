@@ -1,0 +1,13 @@
+<project xmlns:ivy="antlib:org.apache.ivy.ant" xmlns:if="ant:if" name="muhkuh_tester" default="install">
+	<target name="install" description="install all components">
+		<copy todir="${install.documentation}" includeEmptyDirs="true">
+			<fileset dir="doc" />
+		</copy>
+		
+		<copy todir="${install.lua}" includeEmptyDirs="true">
+			<fileset dir="lua" />
+		</copy>
+		
+		<!-- TODO: do something with the system.lua template. -->
+	</target>
+</project>
