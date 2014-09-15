@@ -8,6 +8,8 @@
 			<fileset dir="lua" />
 		</copy>
 		
-		<!-- TODO: do something with the system.lua template. -->
+		<!-- Generate the parameters.txt and system.lua files. -->
+		<xslt in="${ivy.settings.dir}/tests.xml" out="${install.base}/system.lua" style="templates/system.xsl"/>
+		<xslt in="${ivy.settings.dir}/tests.xml" out="${install.base}/parameters.txt" style="templates/parameters.xsl"/>
 	</target>
 </project>
