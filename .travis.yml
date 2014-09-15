@@ -1,0 +1,17 @@
+language: python
+python:
+  - "2.7"
+
+
+env:
+  - secure: "kZYwziZTRgXz815S05srgo78xpxi+n9v0xL5LSAcT2W+EuV3CeTpSkfxD4RBood9L5OEG8dT7Q/X/I373Um5AzVLBY4XynUrAckRBp5wGjkN1nkOWXVe4nRBRPEQBk2LcpmCwxUlFwUW3ImLJKjT4QNIoc0eBXyFIZldvEX/HM4="
+
+
+install:
+  - pip install -q requests
+
+
+# This is the command to build the whole project and pack the results in a distributable form.
+script: 
+  - python mbs/mbs
+  - python ivy/deploy.py
