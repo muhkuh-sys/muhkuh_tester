@@ -80,7 +80,7 @@ if fResult==True:
 	tBinTray.version_delete(strPackage, strVersion)
 tBinTray.version_create(strPackage, strVersion, 'Build results from travis-ci.', '1234')
 
-tBinTray.content_upload(strPackage, strVersion, 'tools.muhkuh.org', 'targets/ivy/repository/org/muhkuh/tools/muhkuh_tester/SNAPSHOT/muhkuh_tester_cli-SNAPSHOT.zip', 'muhkuh_tester_cli.zip')
-tBinTray.content_upload(strPackage, strVersion, 'tools.muhkuh.org', 'targets/ivy/repository/org/muhkuh/tools/muhkuh_tester/SNAPSHOT/ivy-SNAPSHOT.xml',    'ivy.xml')
+tBinTray.content_upload(strPackage, strVersion, 'tools.muhkuh.org', 'targets/ivy/repository/org/muhkuh/tools/muhkuh_tester_cli/SNAPSHOT/muhkuh_tester_cli-SNAPSHOT.zip', 'muhkuh_tester_cli.zip')
+tBinTray.content_upload(strPackage, strVersion, 'tools.muhkuh.org', 'targets/ivy/repository/org/muhkuh/tools/muhkuh_tester_cli/SNAPSHOT/ivy-SNAPSHOT.xml',    'ivy.xml')
 
 

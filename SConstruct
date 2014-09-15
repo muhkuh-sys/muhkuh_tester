@@ -84,7 +84,7 @@ tArcList0.AddFiles('templates/',
 	'templates/system.xsl')
 
 
-strArtifactPath = 'targets/ivy/repository/org/muhkuh/tools/muhkuh_tester/%s' % env_default.ArtifactVersion_Get()
+strArtifactPath = 'targets/ivy/repository/org/muhkuh/tools/muhkuh_tester_cli/%s' % env_default.ArtifactVersion_Get()
 tArc0 = env_default.Archive(os.path.join(strArtifactPath, 'muhkuh_tester_cli-%s.zip' % env_default.ArtifactVersion_Get()), None, ARCHIVE_CONTENTS=tArcList0)
 
 
