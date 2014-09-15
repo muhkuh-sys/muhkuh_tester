@@ -16,7 +16,7 @@ Test cases are written in the LUA scripting language (http://www.lua.org/). The 
  * UART
  * JTAG
 
-Like LUA the Muhkuh tool is open source. It is hosted on Sourceforge: http://sourceforge.net/projects/muhkuh .
+Like LUA the Muhkuh tool is open source. It is hosted on GitHub: https://github.com/muhkuh-sys .
 
 
 [[Quick_start, Quick start]]
