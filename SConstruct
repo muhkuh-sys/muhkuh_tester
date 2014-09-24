@@ -67,7 +67,7 @@ doc = env_default.Asciidoc('targets/doc/org.muhkuh.tools.muhkuh_tester.html', 'R
 # Build the artifacts.
 #
 
-aArtifactServer = ('nexus@netx01', 'secmem_data', 'secmem_data_snapshots')
+aArtifactServer = ('nexus@netx01', 'muhkuh', 'muhkuh_snapshots')
 strArtifactGroup = 'tools.muhkuh.org'
 strArtifactId = 'muhkuh_tester_cli'
 
