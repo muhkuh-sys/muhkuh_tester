@@ -68,7 +68,7 @@ doc = env_default.Asciidoc('targets/doc/org.muhkuh.tools.muhkuh_tester.html', 'R
 #
 
 aArtifactServer = ('nexus@netx01', 'secmem_data', 'secmem_data_snapshots')
-strArtifactGroup = 'org.muhkuh.tools'
+strArtifactGroup = 'tools.muhkuh.org'
 strArtifactId = 'muhkuh_tester_cli'
 
 
@@ -94,7 +94,7 @@ strArtifactPath = 'targets/ivy/repository/org/muhkuh/tools/%s/%s' % (strArtifact
 tArc0 = env_default.Archive(os.path.join(strArtifactPath, '%s-%s.zip' % (strArtifactId,PROJECT_VERSION)), None, ARCHIVE_CONTENTS=tArcList0)
 tIvy0 = env_default.ArtifactVersion(os.path.join(strArtifactPath, '%s-%s.ivy' % (strArtifactId,PROJECT_VERSION)), 'ivy/org.muhkuh.tools.muhkuh_tester_cli/ivy.xml')
 
-env_default.AddArtifact(tArc0, aArtifactServer, strArtifactGroup, strArtifactId, 'zip')
-env_default.AddArtifact(tIvy0, aArtifactServer, strArtifactGroup, strArtifactId, 'ivy')
+env_default.AddArtifact(tArc0, aArtifactServer, strArtifactGroup, strArtifactId, PROJECT_VERSION, 'zip')
+env_default.AddArtifact(tIvy0, aArtifactServer, strArtifactGroup, strArtifactId, PROJECT_VERSION, 'ivy')
 
 tArtifacts = env_default.Artifact('targets/artifacts.xml', None)

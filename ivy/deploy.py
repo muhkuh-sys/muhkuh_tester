@@ -3,7 +3,7 @@ import os
 import os.path
 import requests
 import string
-
+import xml.etree.ElementTree
 
 
 class BinTray:
@@ -73,14 +73,45 @@ strUser,strApiToken = string.split(strAuth, ':')
 strPackage = 'muhkuh_tester_cli'
 strVersion = 'SNAPSHOT'
 
+# Open the XML file.
+tXmlArtifacts = xml.etree.ElementTree.parse('targets/artifacts.xml')
+tNodeRoot = tXmlArtifacts.getroot()
+
+
 tBinTray = BinTray(strUser, strApiToken, 'muhkuh', 'Muhkuh')
-fResult = tBinTray.version_exist(strPackage, strVersion)
-if fResult==True:
-	print 'The version %s exisis already. Delete it.' % strVersion
-	tBinTray.version_delete(strPackage, strVersion)
-tBinTray.version_create(strPackage, strVersion, 'Build results from travis-ci.', '1234')
 
-tBinTray.content_upload(strPackage, strVersion, 'tools.muhkuh.org', 'targets/ivy/repository/org/muhkuh/tools/muhkuh_tester_cli/SNAPSHOT/muhkuh_tester_cli-SNAPSHOT.zip', 'muhkuh_tester_cli.zip')
-tBinTray.content_upload(strPackage, strVersion, 'tools.muhkuh.org', 'targets/ivy/repository/org/muhkuh/tools/muhkuh_tester_cli/SNAPSHOT/ivy-SNAPSHOT.xml',    'ivy.xml')
+# Loop over all targets and find all package/version combinations without duplicates.
+aPackageVersions = set()
+for tNodeTarget in tNodeRoot.findall('Project/Server/Target'):
+	strPackage = tNodeTarget.find('ArtifactID').text
+	strVersion = tNodeTarget.find('Version').text
+	
+	aPackageVersions.add((strPackage, strVersion))
 
+
+# Loop over all package/version combinations. Delete existing version on the server. Create all versions on the server.
+for strPackageVersion in aPackageVersions:
+	strPackage = strPackageVersion[0]
+	strVersion = strPackageVersion[1]
+	
+	print 'Checking if package %s, version %s exists.' % (strPackage,strVersion)
+	fResult = tBinTray.version_exist(strPackage, strVersion)
+	if fResult==True:
+		print 'Package %s: version %s exisis already. Delete it.' % (strPackage,strVersion)
+		tBinTray.version_delete(strPackage, strVersion)
+	
+	print 'Package %s: create version %s.' % (strPackage,strVersion)
+	tBinTray.version_create(strPackage, strVersion, 'Build results from travis-ci.', '1234')
+
+
+# Loop over all targets and upload the files.
+for tNodeTarget in tNodeRoot.findall('Project/Server/Target'):
+	strPackage   = tNodeTarget.find('ArtifactID').text
+	strVersion   = tNodeTarget.find('Version').text
+	strFile      = tNodeTarget.get('file')
+	strGroup     = tNodeTarget.find('GroupID').text
+	strPackaging = tNodeTarget.find('Packaging').text
+	
+	print 'Uploading %s.' % strFile
+	tBinTray.content_upload(strPackage, strVersion, strGroup, strFile, '%s-%s.%s' % (strPackage,strVersion,strPackaging))
 
