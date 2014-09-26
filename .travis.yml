@@ -14,4 +14,4 @@ install:
 # This is the command to build the whole project and pack the results in a distributable form.
 script: 
   - python mbs/mbs
-  - python ivy/deploy.py
+  - python ivy/deploy.py targets/artifacts.xml
