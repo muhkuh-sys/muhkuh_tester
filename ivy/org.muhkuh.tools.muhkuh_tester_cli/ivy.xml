@@ -5,6 +5,7 @@
 		<license name="GPL-2.0"/>
 		<ivyauthor name="Muhkuh team" url="https://github.com/muhkuh-sys" />
 		<description>This module provides a complete tester environment for the command line.</description>
+	</info>
 	<publications>
 		<artifact ext="zip" type="zip" packaging="zip" />
 	</publications>
