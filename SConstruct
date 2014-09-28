@@ -85,6 +85,7 @@ tArcList0.AddFiles('lua/',
 	'lua/test_system.lua')
 
 tArcList0.AddFiles('templates/',
+	'templates/install_testcases.xsl',
 	'templates/parameters.xsl',
 	'templates/system.xsl')
 
