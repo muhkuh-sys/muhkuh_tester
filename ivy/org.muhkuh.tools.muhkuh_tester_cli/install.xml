@@ -13,5 +13,11 @@
 		<!-- Generate the parameters.txt and system.lua files. -->
 		<xslt in="${ivy.settings.dir}/tests.xml" out="${install.base}/system.lua" style="templates/system.xsl"/>
 		<xslt in="${ivy.settings.dir}/tests.xml" out="${install.base}/parameters.txt" style="templates/parameters.xsl"/>
+		
+		<!-- Generate the install script for the test cases. -->
+		<xslt in="${ivy.settings.dir}/tests.xml" out="install_testcases.xml" style="templates/install_testcases.xsl"/>
+		
+		<!-- Run the generated install script. -->
+		<ant antfile="install_testcases.xml" inheritAll="true" inheritRefs="true" />
 	</target>
 </project>
