@@ -9,7 +9,7 @@ require("test_system")
 -- The test cases are specified by a number starting at 1.
 local auiTestCases = {
 </xsl:text>
-<xsl:for-each select="Testcase"><xsl:value-of select="concat('&#9;', position(), substring(',', position()!=last(), 1), '&#xa;')" /></xsl:for-each>
+<xsl:for-each select="Testcase"><xsl:value-of select="concat('&#9;', position(), substring(',', position()!=last(), 1), substring(' ', position()=last(), 1), '    -- ', @id, '&#xa;')" /></xsl:for-each>
 <xsl:text>}
 
 local fTestResult = test_system.run(arg, auiTestCases)
