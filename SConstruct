@@ -93,7 +93,7 @@ tArcList0.AddFiles('templates/',
 
 strArtifactPath = 'targets/ivy/repository/org/muhkuh/tools/%s/%s' % (strArtifactId,PROJECT_VERSION)
 tArc0 = env_default.Archive(os.path.join(strArtifactPath, '%s-%s.zip' % (strArtifactId,PROJECT_VERSION)), None, ARCHIVE_CONTENTS=tArcList0)
-tIvy0 = env_default.ArtifactVersion(os.path.join(strArtifactPath, 'ivy-%s.xml' % PROJECT_VERSION), 'ivy/org.muhkuh.tools.muhkuh_tester_cli/ivy.xml')
+tIvy0 = env_default.Version(os.path.join(strArtifactPath, 'ivy-%s.xml' % PROJECT_VERSION), 'ivy/org.muhkuh.tools.muhkuh_tester_cli/ivy.xml')
 
 env_default.AddArtifact(tArc0, aArtifactServer, strArtifactGroup, strArtifactId, PROJECT_VERSION, 'zip')
 env_default.AddArtifact(tIvy0, aArtifactServer, strArtifactGroup, strArtifactId, PROJECT_VERSION, 'ivy')
