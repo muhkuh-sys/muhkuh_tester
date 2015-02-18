@@ -11,7 +11,7 @@
 			
 			<xsl:for-each select="Testcase">
 				<xsl:element name="ant">
-					<xsl:attribute name="dir"><xsl:value-of select="concat('${ivy.settings.dir}/${path.', @id, '}')"/></xsl:attribute>
+					<xsl:attribute name="dir"><xsl:value-of select="concat('${path.', @id, '}')"/></xsl:attribute>
 					<xsl:attribute name="antfile">install.xml</xsl:attribute>
 					<xsl:attribute name="target">install_testcase</xsl:attribute>
 					<xsl:attribute name="inheritAll">true</xsl:attribute>
