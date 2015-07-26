@@ -252,10 +252,63 @@ end
 
 
 
+local function process_one_parameter(atParameters, strParameterLine)
+	-- Ignore end of file markers.
+	if strParameterLine==nil then
+		-- Ignore end of file markers.
+	-- Ignore empty lines.
+	elseif string.len(strParameterLine)==0 then
+		-- Ignore empty lines.
+	-- Ignore lines starting with a '#'. This is used in parameter files.
+	elseif string.sub(strParameterLine, 1, 1)=="#" then
+		-- Ignore comments.
+	-- This is a parameter file if the entry starts with "@".
+	elseif string.sub(strParameterLine, 1, 1)=="@" then
+		-- Get the filename without the '@'.
+		local strFilename = string.sub(strParameterLine, 2)
+		print ("Processing file ", strFilename)
+		-- Iterate over all lines.
+		for strLine in io.lines(strFilename) do
+			if strLine~=nil then
+				process_one_parameter(atParameters, strLine)
+			end
+		end
+	else
+		strTestCase,strParameterName,strValue = string.match(strParameterLine, "([0-9]+):([0-9a-zA-Z_]+)=(.*)")
+		if strTestCase==nil or strParameterName==nil or strValue==nil then
+			strTestCase,strParameterName,strValue = string.match(strParameterLine, "([0-9a-zA-Z_]+):([0-9a-zA-Z_]+)=(.*)")
+			if strTestCase==nil or strParameterName==nil or strValue==nil then
+				error(string.format("The parameter definition has an invalid format: '%s'", strParameterLine))
+			else
+				uiTestCase = get_module_index(strTestCase)
+			end
+		else
+			uiTestCase = tonumber(strTestCase)
+		end
+		
+		tModule = aModules[uiTestCase]
+		if tModule==nil then
+			error(string.format("Module '%d' not found!", uiTestCase))
+		end
+		
+		tParameter = find_parameter(tModule, strParameterName)
+		if tParameter==nil then
+			error(string.format("The module '%d' has no parameter '%s'!", uiTestCase, strParameterName))
+		end
+		
+		-- Add the parameter to the array.
+		if atAllParameters[uiTestCase]==nil then
+			atParameters[uiTestCase] = {}
+		end
+		local atModuleParameter = atParameters[uiTestCase]
+		atModuleParameter[strParameterName] = strValue
+	end
+end
+
+
+
 local function collect_parameters()
 	-- Expand all file entries recursively.
-	-- TODO...
-	
 	
 	-- Collect all default parameter.
 	for uiTestCase,tModule in ipairs(aModules) do
@@ -269,42 +322,9 @@ local function collect_parameters()
 		atAllParameters[uiTestCase] = atParameters
 	end
 	
-	
 	-- Process all parameters.
 	for iCnt,strParameter in ipairs(astrRawParameters) do
-		-- This is a parameter file if the entry starts with "@".
-		if string.sub(strParameter, 1, 1)=="@" then
-			print ("Processing file ", strParameter)
-		else
-			strTestCase,strParameterName,strValue = string.match(strParameter, "([0-9]+):([0-9a-zA-Z_]+)=(.*)")
-			if strTestCase==nil or strParameterName==nil or strValue==nil then
-				strTestCase,strParameterName,strValue = string.match(strParameter, "([0-9a-zA-Z_]+):([0-9a-zA-Z_]+)=(.*)")
-				if strTestCase==nil or strParameterName==nil or strValue==nil then
-					error(string.format("The parameter definition has an invalid format: '%s'", strParameter))
-				else
-					uiTestCase = get_module_index(strTestCase)
-				end
-			else
-				uiTestCase = tonumber(strTestCase)
-			end
-			
-			tModule = aModules[uiTestCase]
-			if tModule==nil then
-				error(string.format("Module '%d' not found!", uiTestCase))
-			end
-			
-			tParameter = find_parameter(tModule, strParameterName)
-			if tParameter==nil then
-				error(string.format("The module '%d' has no parameter '%s'!", uiTestCase, strParameterName))
-			end
-			
-			-- Add the parameter to the array.
-			if atAllParameters[uiTestCase]==nil then
-				atAllParameters[uiTestCase] = {}
-			end
-			local atModuleParameter = atAllParameters[uiTestCase]
-			atModuleParameter[strParameterName] = strValue
-		end
+		process_one_parameter(atAllParameters, strParameter)
 	end
 end
 
