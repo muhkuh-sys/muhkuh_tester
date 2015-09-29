@@ -13,6 +13,6 @@
 		<artifact ext="zip" type="zip" packaging="zip" />
 	</publications>
 	<dependencies>
-		<dependency org="org.muhkuh.tools" name="muhkuh_base_cli" rev="2.2.0"/>
+		<dependency org="org.muhkuh.tools" name="muhkuh_base_cli" rev="2.2.1"/>
 	</dependencies>
 </ivy-module>
