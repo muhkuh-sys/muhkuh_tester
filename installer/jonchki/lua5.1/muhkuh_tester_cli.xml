@@ -10,6 +10,6 @@
 		<description>This module provides a complete tester environment for the command line.</description>
 	</info>
 	<dependencies>
-		<dependency group="org.muhkuh.tools" module="muhkuh_base_cli" artifact="muhkuh_base_cli" version="2.2.6"/>
+		<dependency group="org.muhkuh.tools" module="muhkuh_base_cli" artifact="lua5.1-muhkuh_base_cli" version="2.2.6"/>
 	</dependencies>
 </jonchki-artifact>
