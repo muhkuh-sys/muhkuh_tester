@@ -26,7 +26,7 @@
 #
 
 SConscript('mbs/SConscript')
-Import('env_default')
+Import('atEnv')
 
 import os.path
 
@@ -37,7 +37,7 @@ import os.path
 #
 
 # Get the default attributes.
-aAttribs = env_default['ASCIIDOC_ATTRIBUTES']
+aAttribs = atEnv.DEFAULT['ASCIIDOC_ATTRIBUTES']
 # Add some custom attributes.
 aAttribs.update(dict({
 	# Use ASCIIMath formulas.
@@ -59,20 +59,25 @@ aAttribs.update(dict({
 	'toclevels': 4
 }))
 
-doc = env_default.Asciidoc('targets/doc/org.muhkuh.tools.muhkuh_tester.html', 'README.asciidoc', ASCIIDOC_BACKEND='html5', ASCIIDOC_ATTRIBUTES=aAttribs)
+doc = atEnv.DEFAULT.Asciidoc('targets/doc/org.muhkuh.tools.muhkuh_tester.html', 'README.asciidoc', ASCIIDOC_BACKEND='html5', ASCIIDOC_ATTRIBUTES=aAttribs)
 
 
 #----------------------------------------------------------------------------
 #
 # Build the artifacts.
 #
+strGroup = 'tools.muhkuh.org'
+strModule = 'muhkuh_tester_cli'
 
-aArtifactServer = ('nexus@netx01', 'muhkuh', 'muhkuh_snapshots')
-strArtifactGroup = 'tools.muhkuh.org'
-strArtifactId = 'muhkuh_tester_cli'
+# Split the group by dots.
+aGroup = strGroup.split('.')
+# Build the path for all artifacts.
+strModulePath = 'targets/jonchki/repository/%s/%s/%s' % ('/'.join(aGroup), strModule, PROJECT_VERSION)
 
+# Set the name of the artifact.
+strArtifact0 = 'lua5.1-muhkuh_tester_cli'
 
-tArcList0 = env_default.ArchiveList('zip')
+tArcList0 = atEnv.DEFAULT.ArchiveList('zip')
 
 tArcList0.AddFiles('',
 	'ivy/org.muhkuh.tools.muhkuh_tester_cli/install.xml')
@@ -90,18 +95,8 @@ tArcList0.AddFiles('templates/',
 	'templates/system.xsl')
 
 
-aArtifactGroupReverse = strArtifactGroup.split('.')
-aArtifactGroupReverse.reverse()
-
-strArtifactPath = 'targets/ivy/repository/%s/%s/%s' % ('/'.join(aArtifactGroupReverse),strArtifactId,PROJECT_VERSION)
-tArc = env_default.Archive(os.path.join(strArtifactPath, '%s-%s.zip' % (strArtifactId,PROJECT_VERSION)), None, ARCHIVE_CONTENTS=tArcList0)
-tIvy = env_default.Version(os.path.join(strArtifactPath, 'ivy-%s.xml' % PROJECT_VERSION), 'ivy/%s.%s/ivy.xml' % ('.'.join(aArtifactGroupReverse),strArtifactId))
-
-env_default.AddArtifact(tArc, aArtifactServer, strArtifactGroup, strArtifactId, PROJECT_VERSION, 'zip')
-env_default.AddArtifact(tIvy, aArtifactServer, strArtifactGroup, strArtifactId, PROJECT_VERSION, 'ivy')
-
-tArtifacts = env_default.Artifact('targets/artifacts.xml', None)
-
-# Copy the artifacts to a fixed filename to allow a deploy to github.
-Command('targets/ivy/%s.zip' % strArtifactId,  tArc,  Copy("$TARGET", "$SOURCE"))
-Command('targets/ivy/ivy.xml', tIvy,  Copy("$TARGET", "$SOURCE"))
+tArtifact0 = atEnv.DEFAULT.Archive(os.path.join(strModulePath, '%s-%s.zip' % (strArtifact0, PROJECT_VERSION)), None, ARCHIVE_CONTENTS = tArcList0)
+tArtifact0Hash = atEnv.DEFAULT.Hash('%s.hash' % tArtifact0[0].get_path(), tArtifact0[0].get_path(), HASH_ALGORITHM='md5,sha1,sha224,sha256,sha384,sha512', HASH_TEMPLATE='${ID_UC}:${HASH}\n')
+tConfiguration0 = atEnv.DEFAULT.Version(os.path.join(strModulePath, '%s-%s.xml' % (strArtifact0, PROJECT_VERSION)), 'installer/jonchki/lua5.1/%s.xml' % strModule)
+tConfiguration0Hash = atEnv.DEFAULT.Hash('%s.hash' % tConfiguration0[0].get_path(), tConfiguration0[0].get_path(), HASH_ALGORITHM='md5,sha1,sha224,sha256,sha384,sha512', HASH_TEMPLATE='${ID_UC}:${HASH}\n')
+tArtifact0Pom = atEnv.DEFAULT.ArtifactVersion(os.path.join(strModulePath, '%s-%s.pom' % (strArtifact0, PROJECT_VERSION)), 'installer/jonchki/lua5.1/pom.xml')

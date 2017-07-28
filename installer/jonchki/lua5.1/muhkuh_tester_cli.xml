@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jonchki-artifact version="1.0">
+	<info group="org.muhkuh.tools"
+	      module="muhkuh_tester_cli"
+	      artifact="lua5.1-muhkuh_tester_cli"
+	      version="${PROJECT_VERSION}"
+	      vcs-id="${PROJECT_VERSION_VCS}">
+		<license name="GPL-2.0"/>
+		<author name="Muhkuh team" url="https://github.com/muhkuh-sys" />
+		<description>This module provides a complete tester environment for the command line.</description>
+	</info>
+	<dependencies>
+		<dependency group="org.muhkuh.tools" module="muhkuh_base_cli" artifact="muhkuh_base_cli" version="2.2.6"/>
+	</dependencies>
+</jonchki-artifact>
