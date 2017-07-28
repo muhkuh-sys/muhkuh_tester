@@ -66,7 +66,7 @@ doc = atEnv.DEFAULT.Asciidoc('targets/doc/org.muhkuh.tools.muhkuh_tester.html', 
 #
 # Build the artifacts.
 #
-strGroup = 'tools.muhkuh.org'
+strGroup = 'org.muhkuh.tools'
 strModule = 'muhkuh_tester_cli'
 
 # Split the group by dots.
@@ -80,7 +80,7 @@ strArtifact0 = 'lua5.1-muhkuh_tester_cli'
 tArcList0 = atEnv.DEFAULT.ArchiveList('zip')
 
 tArcList0.AddFiles('',
-	'ivy/org.muhkuh.tools.muhkuh_tester_cli/install.xml')
+	'installer/jonchki/lua5.1/install.lua')
 
 tArcList0.AddFiles('doc/',
 	doc)
