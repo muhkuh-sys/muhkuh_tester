@@ -2,17 +2,13 @@
 <?xml-stylesheet type="text/xsl" href="mbs/setup2html.xsl"?>
 
 <muhkuh_buildsystem project="org.muhkuh.tests.spi_flash">
-	<project_version>
-		<major>1</major>
-		<minor>1</minor>
-		<micro>1</micro>
-	</project_version>
+	<project_version>1.1.1</project_version>
 
 	<scons>
 		<group>org.scons</group>
 		<name>scons-local</name>
 		<package>scons-local</package>
-		<version>2.3.5_1</version>
+		<version>2.5.0_1</version>
 		<typ>tar.bz2</typ>
 	</scons>
 
