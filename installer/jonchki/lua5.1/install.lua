@@ -177,7 +177,8 @@ function tPostTriggerAction:run(tInstallHelper)
             table.insert(astrParametersTxt, string.format('%d:%s=%s', uiTestIndex, tParameter.name, tParameter.value))
           end
         end
-        local tFileResult, strError = pl.utils.writefile('parameters.txt', table.concat(astrParametersTxt, '\n'), false)
+        local strPathInstallBase = t:replace_template('${install_base}')
+        local tFileResult, strError = pl.utils.writefile(t.pl.path.join(strPathInstallBase, 'parameters.txt'), table.concat(astrParametersTxt, '\n'), false)
         if tFileResult~=true then
           tLogger:error('Failed to write the parameters to "parameters.txt": %s', strError)
           tResult = nil
@@ -206,16 +207,11 @@ function tPostTriggerAction:run(tInstallHelper)
           table.insert(astrSystemLua, [[elseif fTestResult==false then]])
           table.insert(astrSystemLua, [[  error("The test suite failed!")]])
           table.insert(astrSystemLua, [[end]])
-          local tFileResult, strError = pl.utils.writefile('system.lua', table.concat(astrSystemLua, '\n'), false)
+          local tFileResult, strError = pl.utils.writefile(t.pl.path.join(strPathInstallBase, 'system.lua'), table.concat(astrSystemLua, '\n'), false)
           if tFileResult~=true then
             tLogger:error('Failed to write the system script to "system.lua": %s', strError)
             tResult = nil
           else
-            -- Install the generated files.
-            t:setCwd(lfs.currentdir())
-            t:install('parameters.txt', '${install_base}/')
-            t:install('system.lua', '${install_base}/')
-
             -- Run all installer scripts for the test case.
             for uiTestCaseId, tTestCase in ipairs(atTestCases) do
               -- The test ID identifies the artifact providing the test script.
