@@ -432,26 +432,59 @@ local function run_tests()
 	-- Run all enabled modules with their parameter.
 	local fTestResult = true
 	
+  -- TODO: Create this a lot earlier.
+  local tLogWriterConsole
+  local strDirectorySeparator = package.config:sub(1,1)
+  if strDirectorySeparator=='\\' then
+    -- This is windows. Do not use colors here as the default cmd.exe does not
+    -- support this.
+    tLogWriterConsole = require 'log.writer.console'.new()
+  else
+    tLogWriterConsole = require 'log.writer.console.color'.new()
+  end
+  local tLogWriterSystem = require 'log.writer.prefix'.new('[System] ', tLogWriterConsole)
+  local tLog = require "log".new(
+    -- maximum log level
+    "trace",
+    tLogWriterSystem,
+    -- Formatter
+    require "log.formatter.format".new()
+  )
+
 	for iCnt,uiTestCase in ipairs(auiTests) do
 		tModule = aModules[uiTestCase]
 		if tModule==nil then
-			error(string.format("Test case %02d not found!", uiTestCase))
+			tLog.emerg('Test case %02d not found!', uiTestCase)
+			error('Stop.')
 		end
 		
 		-- Show all parameters for the test case.
-		print("__/Parameters/________________________________________________________________")
-		print(string.format("Parameters for testcase %d (%s):", uiTestCase, tModule.CFG_strTestName))
+		tLog.info("__/Parameters/________________________________________________________________")
+		tLog.info("Parameters for testcase %d (%s):", uiTestCase, tModule.CFG_strTestName)
 		show_parameters(uiTestCase)
-		print("______________________________________________________________________________")
+		tLog.info("______________________________________________________________________________")
 		
 		-- Get the parameters for the module.
 		local atParameters = atAllParameters[uiTestCase]
 		
 		-- Execute the test code.
-		fStatus, tResult = pcall(tModule.run, atParameters)
+    local tLogWriterTestcase = require 'log.writer.prefix'.new(string.format('[Test %02d] ', uiTestCase), tLogWriterConsole)
+    local tLogTestcase = require "log".new(
+      -- maximum log level
+      "trace",
+      tLogWriterTestcase,
+      -- Formatter
+      require "log.formatter.format".new()
+    )
+
+		fStatus, tResult = pcall(tModule.run, tModule, atParameters, tLogTestcase)
 		if not fStatus then
-			print("Error running the test:")
-			print(tResult)
+			tLog.error("Error running the test:")
+			if tResult~=nil then
+				tLog.error(tResult)
+			else
+				tLog.error("No error message.")
+			end
 			
 			fTestResult = false
 			break;
@@ -459,7 +492,7 @@ local function run_tests()
 	end
 	
 	-- Close the connection to the netX.
-	tester.closeCommonPlugin()
+--	tester.closeCommonPlugin()
 	
 	-- Print the result in huge letters.
 	if fTestResult==true then
