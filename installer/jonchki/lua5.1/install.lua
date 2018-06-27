@@ -153,7 +153,7 @@ function tPostTriggerAction:run(tInstallHelper)
   local lfs = require 'lfs'
 
   local strTestsFile = 'tests.xml'
-  if pl.path.exists(strTestsFile)==nil then
+  if pl.path.exists(strTestsFile)~=strTestsFile then
     tLogger:error('The test configuration file "%s" does not exist.', strTestsFile)
     tResult = nil
   elseif pl.path.isfile(strTestsFile)~=true then
@@ -161,7 +161,7 @@ function tPostTriggerAction:run(tInstallHelper)
     tResult = nil
   else
     -- Read the complete file.
-    local strFileData, strError = t.pl.utils.readfile('tests.xml')
+    local strFileData, strError = t.pl.utils.readfile(strTestsFile)
     if strFileData==nil then
       tLogger:error('Failed to read the test configuration file "%s": %s', strTestsFile, strError)
       tResult = nil
