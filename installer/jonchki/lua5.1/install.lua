@@ -23,10 +23,10 @@ function tPostTriggerAction.__parseTests_StartElement(tParser, strName, atAttrib
     local strName = atAttributes['name']
     if strID==nil or strID=='' then
       aLxpAttr.tResult = nil
-      aLxpAttr.tLogger:error('Error in line %d, col %d: missing "id".', iPosLine, iPosColumn)
+      aLxpAttr.tLog.error('Error in line %d, col %d: missing "id".', iPosLine, iPosColumn)
     elseif strName==nil or strName=='' then
       aLxpAttr.tResult = nil
-      aLxpAttr.tLogger:error('Error in line %d, col %d: missing "name".', iPosLine, iPosColumn)
+      aLxpAttr.tLog.error('Error in line %d, col %d: missing "name".', iPosLine, iPosColumn)
     else
       local tTestCase = {
         id = strID,
@@ -42,7 +42,7 @@ function tPostTriggerAction.__parseTests_StartElement(tParser, strName, atAttrib
     local strName = atAttributes['name']
     if strName==nil or strName=='' then
       aLxpAttr.tResult = nil
-      aLxpAttr.tLogger:error('Error in line %d, col %d: missing "name".', iPosLine, iPosColumn)
+      aLxpAttr.tLog.error('Error in line %d, col %d: missing "name".', iPosLine, iPosColumn)
     else
       aLxpAttr.strParameterName = strName
     end
@@ -68,10 +68,10 @@ function tPostTriggerAction.__parseTests_EndElement(tParser, strName)
   elseif strCurrentPath=='/MuhkuhTest/Testcase/Parameter' then
     if aLxpAttr.strParameterName==nil then
       aLxpAttr.tResult = nil
-      aLxpAttr.tLogger:error('Error in line %d, col %d: missing "name".', iPosLine, iPosColumn)
+      aLxpAttr.tLog.error('Error in line %d, col %d: missing "name".', iPosLine, iPosColumn)
     elseif aLxpAttr.strParameterData==nil then
       aLxpAttr.tResult = nil
-      aLxpAttr.tLogger:error('Error in line %d, col %d: missing data for parameter.', iPosLine, iPosColumn)
+      aLxpAttr.tLog.error('Error in line %d, col %d: missing data for parameter.', iPosLine, iPosColumn)
     else
       table.insert(aLxpAttr.tTestCase.parameter, {name=aLxpAttr.strParameterName, value=aLxpAttr.strParameterData})
     end
@@ -98,7 +98,7 @@ end
 
 
 
-function tPostTriggerAction:__parse_tests(tLogger, strFileData)
+function tPostTriggerAction:__parse_tests(tLog, strFileData)
   local tResult = nil
   local lxp = require 'lxp'
 
@@ -113,7 +113,7 @@ function tPostTriggerAction:__parse_tests(tLogger, strFileData)
     atTestCases = {},
 
     tResult = true,
-    tLogger = tLogger
+    tLog = tLog
   }
 
   local aLxpCallbacks = {}
@@ -134,9 +134,9 @@ function tPostTriggerAction:__parse_tests(tLogger, strFileData)
   end
 
   if tParseResult==nil then
-    tLogger:error('Failed to parse the test configuration "%s": %s in line %d, column %d, position %d.', strSourceUrl, strMsg, uiLine, uiCol, uiPos)
+    tLog.error('Failed to parse the test configuration "%s": %s in line %d, column %d, position %d.', strSourceUrl, strMsg, uiLine, uiCol, uiPos)
   elseif aLxpAttr.tResult~=true then
-    tLogger:error('Failed to parse the test configuration.')
+    tLog.error('Failed to parse the test configuration.')
   else
     tResult = aLxpAttr.atTestCases
   end
@@ -148,27 +148,27 @@ end
 
 function tPostTriggerAction:run(tInstallHelper)
   local tResult = true
-  local pl = t.pl
-  local tLogger = t.cLogger
+  local pl = tInstallHelper.pl
+  local tLog = tInstallHelper.tLog
   local lfs = require 'lfs'
 
   local strTestsFile = 'tests.xml'
   if pl.path.exists(strTestsFile)~=strTestsFile then
-    tLogger:error('The test configuration file "%s" does not exist.', strTestsFile)
+    tLog.error('The test configuration file "%s" does not exist.', strTestsFile)
     tResult = nil
   elseif pl.path.isfile(strTestsFile)~=true then
-    tLogger:error('The path "%s" is no regular file.', strTestsFile)
+    tLog.error('The path "%s" is no regular file.', strTestsFile)
     tResult = nil
   else
     -- Read the complete file.
-    local strFileData, strError = t.pl.utils.readfile(strTestsFile)
+    local strFileData, strError = pl.utils.readfile(strTestsFile)
     if strFileData==nil then
-      tLogger:error('Failed to read the test configuration file "%s": %s', strTestsFile, strError)
+      tLog.error('Failed to read the test configuration file "%s": %s', strTestsFile, strError)
       tResult = nil
     else
-      local atTestCases = self:__parse_tests(tLogger, strFileData)
+      local atTestCases = self:__parse_tests(tLog, strFileData)
       if atTestCases==nil then
-        tLogger:error('Failed to parse the test configuration file "%s".', strTestsFile)
+        tLog.error('Failed to parse the test configuration file "%s".', strTestsFile)
         tResult = nil
       else
         -- Generate the "parameters.txt" file.
@@ -179,9 +179,9 @@ function tPostTriggerAction:run(tInstallHelper)
           end
         end
         local strPathInstallBase = t:replace_template('${install_base}')
-        local tFileResult, strError = pl.utils.writefile(t.pl.path.join(strPathInstallBase, 'parameters.txt'), table.concat(astrParametersTxt, '\n'), false)
+        local tFileResult, strError = pl.utils.writefile(pl.path.join(strPathInstallBase, 'parameters.txt'), table.concat(astrParametersTxt, '\n'), false)
         if tFileResult~=true then
-          tLogger:error('Failed to write the parameters to "parameters.txt": %s', strError)
+          tLog.error('Failed to write the parameters to "parameters.txt": %s', strError)
           tResult = nil
         else
           -- Generate the "system.lua" file.
@@ -208,9 +208,9 @@ function tPostTriggerAction:run(tInstallHelper)
           table.insert(astrSystemLua, [[elseif fTestResult==false then]])
           table.insert(astrSystemLua, [[  error("The test suite failed!")]])
           table.insert(astrSystemLua, [[end]])
-          local tFileResult, strError = pl.utils.writefile(t.pl.path.join(strPathInstallBase, 'system.lua'), table.concat(astrSystemLua, '\n'), false)
+          local tFileResult, strError = pl.utils.writefile(pl.path.join(strPathInstallBase, 'system.lua'), table.concat(astrSystemLua, '\n'), false)
           if tFileResult~=true then
-            tLogger:error('Failed to write the system script to "system.lua": %s', strError)
+            tLog.error('Failed to write the system script to "system.lua": %s', strError)
             tResult = nil
           else
             -- Run all installer scripts for the test case.
@@ -222,11 +222,11 @@ function tPostTriggerAction:run(tInstallHelper)
               local strDepackPath = tInstallHelper:replace_template(string.format('${depack_path_%s}', tTestCase.id))
               local strInstallScriptPath = pl.path.join(strDepackPath, 'install_testcase.lua')
               if pl.path.exists(strInstallScriptPath)~=strInstallScriptPath then
-                tLogger:error('The test case install script "%s" for the test %s / %s does not exist.', strInstallScriptPath, tTestCase.id, tTestCase.name)
+                tLog.error('The test case install script "%s" for the test %s / %s does not exist.', strInstallScriptPath, tTestCase.id, tTestCase.name)
                 tResult = nil
                 break
               elseif pl.path.isfile(strInstallScriptPath)~=true then
-                tLogger:error('The test case install script "%s" for the test %s / %s is no regular file.', strInstallScriptPath, tTestCase.id, tTestCase.name)
+                tLog.error('The test case install script "%s" for the test %s / %s is no regular file.', strInstallScriptPath, tTestCase.id, tTestCase.name)
                 tResult = nil
                 break
               else
@@ -234,7 +234,7 @@ function tPostTriggerAction:run(tInstallHelper)
                 local tFileResult, strError = pl.utils.readfile(strInstallScriptPath, false)
                 if tFileResult==nil then
                   tResult = nil
-                  tLogger:error('Failed to read the test case install script "%s": %s', strInstallScriptPath, strError)
+                  tLog.error('Failed to read the test case install script "%s": %s', strInstallScriptPath, strError)
                   break
                 else
                   -- Parse the install script.
@@ -242,7 +242,7 @@ function tPostTriggerAction:run(tInstallHelper)
                   tResult, strError = loadstring(strInstallScript, strInstallScriptPath)
                   if tResult==nil then
                     tResult = nil
-                    tLogger:error('Failed to parse the test case install script "%s": %s', strInstallScriptPath, strError)
+                    tLog.error('Failed to parse the test case install script "%s": %s', strInstallScriptPath, strError)
                     break
                   else
                     local fnInstall = tResult
@@ -257,13 +257,13 @@ function tPostTriggerAction:run(tInstallHelper)
                     tResult, strError = pcall(fnInstall, tInstallHelper, uiTestCaseId, tTestCase.name)
                     if tResult~=true then
                       tResult = nil
-                      tLogger:error('Failed to run the install script "%s": %s', strInstallScriptPath, tostring(strError))
+                      tLog.error('Failed to run the install script "%s": %s', strInstallScriptPath, tostring(strError))
                       break
 
                     -- The second value is the return value.
                     elseif strError~=true then
                       tResult = nil
-                      tLogger:error('The install script "%s" returned "%s".', strInstallScriptFile, tostring(strError))
+                      tLog.error('The install script "%s" returned "%s".', strInstallScriptFile, tostring(strError))
                       break
                     end
                   end
