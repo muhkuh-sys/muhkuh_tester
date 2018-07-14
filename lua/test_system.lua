@@ -27,6 +27,8 @@ local strLogFileName = nil
 -- This is the pattern for the interface.
 local strInterfacePattern = nil
 
+local pl = require'pl.import_into'()
+
 
 ------------------------------------------------------------------------------
 
@@ -191,6 +193,9 @@ end
 
 
 local function parse_commandline_arguments(astrArg, auiAllTestCases)
+  -- No parameter file specified yet.
+  local fParameterFileOnCli = false
+
   -- Parse all command line arguments.
   sizArgCnt = 1
   sizArgMax = #astrArg
@@ -236,6 +241,7 @@ local function parse_commandline_arguments(astrArg, auiAllTestCases)
       -- Add the argument to the list of parameters.
       strArg = astrArg[sizArgCnt]
       table.insert(astrRawParameters, "@" .. strArg)
+      fParameterFileOnCli = true
     else
       uiTestCase = tonumber(strArg)
       if uiTestCase==nil then
@@ -250,6 +256,15 @@ local function parse_commandline_arguments(astrArg, auiAllTestCases)
   -- Set the interface to the default of "ASK" if not specified.
   if strInterfacePattern==nil then
     strInterfacePattern = 'ASK'
+  end
+
+  -- If no parameter file was specified, check if "parameters.txt" exists.
+  if fParameterFileOnCli~=true then
+    local strDefaultParameters = 'parameters.txt'
+    strDefaultParameters = pl.path.exists(strDefaultParameters)
+    if strDefaultParameters~=nil then
+      table.insert(astrRawParameters, "@" .. strDefaultParameters)
+    end
   end
 
   -- If no test cases were specified run all of them.
