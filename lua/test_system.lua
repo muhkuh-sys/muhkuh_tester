@@ -247,11 +247,9 @@ local function parse_commandline_arguments(astrArg, auiAllTestCases)
     sizArgCnt = sizArgCnt + 1
   end
 
-  if fShowParameters==false then
-    -- The interface parameter is mandatory.
-    if strInterfacePattern==nil then
-      error("No interface specified!")
-    end
+  -- Set the interface to the default of "ASK" if not specified.
+  if strInterfacePattern==nil then
+    strInterfacePattern = 'ASK'
   end
 
   -- If no test cases were specified run all of them.
