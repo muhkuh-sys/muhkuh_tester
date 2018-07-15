@@ -240,7 +240,6 @@ local function parse_commandline_arguments(astrArg, auiAllTestCases)
 
 
   local tArgs = tParser:parse()
-  pl.pretty.dump(tArgs)
 
   -- Save the selected log level.
   strLogLevel = tArgs.strLogLevel
