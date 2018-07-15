@@ -3,8 +3,8 @@ module("test_system", package.seeall)
 ------------------------------------------------------------------------------
 
 
-local strTesterVersion = '1.2.3'
-local strTesterVcsVersion = 'GITabc'
+local strTesterVersion = '${PROJECT_VERSION}'
+local strTesterVcsVersion = '${PROJECT_VERSION_VCS}'
 
 -- The "show parameter" mode is disabled by default.
 local fShowParameters = false

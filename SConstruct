@@ -64,6 +64,13 @@ doc = atEnv.DEFAULT.Asciidoc('targets/doc/org.muhkuh.tools.muhkuh_tester.html', 
 
 #----------------------------------------------------------------------------
 #
+# Add the version numbers to the tester script.
+#
+tTestSystemLua = atEnv.DEFAULT.Version('#targets/lua/test_system.lua', 'lua/test_system.lua')
+
+
+#----------------------------------------------------------------------------
+#
 # Build the artifacts.
 #
 strGroup = 'org.muhkuh.tools'
@@ -87,12 +94,7 @@ tArcList0.AddFiles('doc/',
 
 tArcList0.AddFiles('lua/',
 	'lua/parameters.lua',
-	'lua/test_system.lua')
-
-tArcList0.AddFiles('templates/',
-	'templates/install_testcases.xsl',
-	'templates/parameters.xsl',
-	'templates/system.xsl')
+	tTestSystemLua)
 
 tArcList0.AddFiles('wrapper/linux/',
 	'wrapper/linux/tester')
