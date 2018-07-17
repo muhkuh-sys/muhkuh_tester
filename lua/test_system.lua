@@ -307,8 +307,8 @@ local function parse_commandline_arguments(astrArg, auiAllTestCases)
   astrRawParameters = tArgs.astrRawParameters
   -- Search the list of parameters for a file (i.e. a string entry).
   local fParameterFileOnCli = false
-  for _, tParameter in pairs(astrRawParameters) do
-    if type(tParameter)=='string' then
+  for _, strParameter in pairs(astrRawParameters) do
+    if string.sub(strParameter, 1, 1)=='@' then
       -- This is a parameter file.
       fParameterFileOnCli = true
       break
