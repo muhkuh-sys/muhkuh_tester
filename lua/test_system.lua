@@ -193,6 +193,16 @@ local function parse_commandline_arguments(astrArg, auiAllTestCases)
     :description('Show all available parameters for all test cases. Do not run any tests.')
     :default(false)
     :target('fShowParameters')
+  tParser:mutex(
+    tParser:flag('--color')
+      :description('Use colors to beautify the console output. This is the default on Linux.')
+      :action("store_true")
+      :target('fUseColor'),
+    tParser:flag('--no-color')
+      :description('Do not use colors for the console output. This is the default on Windows.')
+      :action("store_false")
+      :target('fUseColor')
+  )
   tParser:option('-l --logfile')
     :description('Write all output to FILE.')
     :argname('<FILE>')
@@ -249,19 +259,27 @@ local function parse_commandline_arguments(astrArg, auiAllTestCases)
 
   fShowParameters = tArgs.fShowParameters
 
+  local fUseColor = tArgs.fUseColor
+  if fUseColor==nil then
+    if strDirectorySeparator=='\\' then
+      -- Running on windows. Do not use colors here as the default cmd.exe does
+      -- not support this.
+      fUseColor = false
+    else
+      -- Running on Linux. Use colors.
+      fUseColor = true
+    end
+  end
+
   -- Collect all log writers.
   local atLogWriters = {}
 
   -- Create the console logger.
   local tLogWriterConsole
-  local strDirectorySeparator = package.config:sub(1,1)
-  if strDirectorySeparator=='\\' then
-    -- Running on windows. Do not use colors here as the default cmd.exe does
-    -- not support this.
-    tLogWriterConsole = require 'log.writer.console'.new()
-  else
-    -- Running on Linux. Use colors.
+  if fUseColor==true then
     tLogWriterConsole = require 'log.writer.console.color'.new()
+  else
+    tLogWriterConsole = require 'log.writer.console'.new()
   end
   table.insert(atLogWriters, tLogWriterConsole)
 
