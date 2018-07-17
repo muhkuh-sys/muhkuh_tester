@@ -581,7 +581,7 @@ local function run_tests()
     -- Create a new log target for the testcase.
     local tLogWriterTestcase = require 'log.writer.prefix'.new(
       string.format('[Test %02d] ', uiTestCase),
-      tLogWriterConsole
+      tLogWriter
     )
     local tLogTestcase = require 'log'.new(
       -- maximum log level
