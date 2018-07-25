@@ -1,0 +1,5 @@
+ * Missing parameters from not selected tests prevent execution of other tests.
+Example: test 1 requires a parameter "serial", which is not part of
+"parameters.txt". It has to be specified on the command line. Test 2 does not
+use this parameter at all. If only test 2 should be executed, the "serial"
+parameter must still be present on the command line.
