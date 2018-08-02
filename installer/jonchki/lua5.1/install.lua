@@ -269,7 +269,7 @@ function tPostTriggerAction:run(tInstallHelper)
                   -- The second value is the return value.
                   elseif strError~=true then
                     tResult = nil
-                    tLog.error('The install script "%s" returned "%s".', strInstallScriptFile, tostring(strError))
+                    tLog.error('The install script "%s" returned "%s".', strInstallScriptPath, tostring(strError))
                     break
                   end
                 end
