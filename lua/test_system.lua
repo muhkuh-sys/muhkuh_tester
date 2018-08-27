@@ -591,8 +591,8 @@ local function run_tests()
       require 'log.formatter.format'.new()
     )
 
-    -- Execute the test code.
-    fStatus, tResult = pcall(tModule.run, tModule, atParameters, tLogTestcase)
+    -- Execute the test code. Write a stack trace to the debug logger if the test case crashes.
+    fStatus, tResult = xpcall(function() tModule:run(atParameters, tLogTestcase) end, function(tErr) tLogSystem.debug(debug.traceback()) return tErr end)
     tLogSystem.info('Testcase %d (%s) finished.', uiTestCase, strTestCaseName)
     if not fStatus then
       local strError
