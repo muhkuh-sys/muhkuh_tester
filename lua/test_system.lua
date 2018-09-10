@@ -519,7 +519,7 @@ local function run_tests()
     else
       tLogSystem.info('Parameters for testcase %d (%s):', uiTestCase, strTestCaseName)
       for _, tParameter in pairs(atParameters) do
-        tLogSystem.info('  %02d:%s = %s', uiTestCase, tParameter.strName, tParameter:get())
+        tLogSystem.info('  %02d:%s = %s', uiTestCase, tParameter.strName, tParameter:get_pretty())
       end
     end
     tLogSystem.info("______________________________________________________________________________")
