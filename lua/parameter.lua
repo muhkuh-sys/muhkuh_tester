@@ -53,6 +53,9 @@ function Parameter:_init(strOwner, strName, strHelp, tLogWriter, strLogLevel)
   self.fHasValue = false
   self.tValue = nil
 
+  self.fIsValidated = false
+  self.tValidatedValue = nil
+
   self.atConnections = {}
 end
 
@@ -96,8 +99,9 @@ end
 
 
 function Parameter:__set(tValue)
-    self.tValue = tValue
-    self.fHasValue = true
+  self.tValue = tValue
+  self.fHasValue = true
+  self.fIsValidated = false
 end
 
 
@@ -125,7 +129,7 @@ function Parameter:set(tValue, atAlreadyProcessed)
 end
 
 
-function Parameter:get(tValue)
+function Parameter:get_raw()
   local tValue
 
   if self:has_value() then
@@ -134,7 +138,21 @@ function Parameter:get(tValue)
     tValue = self.tDefaultValue
   else
     self.tLog.error('No value and no default value present.')
-    error('get on unset parameter')
+    error('get_raw on unset parameter')
+  end
+
+  return tValue
+end
+
+
+function Parameter:get()
+  local tValue
+
+  if self.fIsValidated~=true then
+    self.tLog.error('Failed to get the validated value as the parameter is not validated yet.')
+    error('not validated')
+  else
+    tValue = self.tValidatedValue
   end
 
   return tValue
@@ -157,7 +175,7 @@ function Parameter:connect(tParameter)
   else
     self.tLog.debug('Connecting to %s.', strOtherID)
 
-    if self:has_value()==true and tParameter:has_value()==true and self:get()~=tParameter:get() then
+    if self:has_value()==true and tParameter:has_value()==true and self:get_raw()~=tParameter:get_raw() then
       self.tLog.error('Can not connect to %s. both sides have values and they differ.', strOtherID)
       error('connect failed: both sides set to different values')
     end
@@ -177,7 +195,7 @@ function Parameter:connect(tParameter)
 
     -- Get the value from the other side if there is a value and we do not have one yet.
     if self:has_value()==false and tParameter:has_value()==true then
-      local tValue = tParameter:get()
+      local tValue = tParameter:get_raw()
       self.tLog.debug('Initialize value from %s with %s .', strOtherID, tostring(tValue))
       self:__set(tValue)
     end
@@ -201,6 +219,9 @@ function Parameter:validate()
     if self.fRequired==true then
       fIsValid = false
       strMessage = 'The parameter is required, but no value and no default value is set.'
+    else
+      self.fIsValidated = true
+      self.tValidatedValue = nil
     end
 
   else
@@ -225,9 +246,12 @@ function Parameter:validate()
         self.tLog.debug('The constraint function complained with the message "%s".', tostring(strMessage))
       end
     end
+
+    self.fIsValidated = true
+    self.tValidatedValue = tValue
   end
 
-  return fIsValid, tValue, strMessage
+  return fIsValid, strMessage
 end
 
 
