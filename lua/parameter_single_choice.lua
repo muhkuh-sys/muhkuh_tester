@@ -7,9 +7,6 @@ local Parameter_SingleChoice = class(Parameter)
 function Parameter_SingleChoice:_init(strOwner, strName, strHelp, tLogWriter, strLogLevel)
   self:super(strOwner, strName, strHelp, tLogWriter, strLogLevel)
 
-  -- The "penlight" module is used to parse the constraints.
-  self.pl = require'pl.import_into'()
-
   self.atConstraint = nil
 end
 

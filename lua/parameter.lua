@@ -23,6 +23,9 @@ function Parameter:_init(strOwner, strName, strHelp, tLogWriter, strLogLevel)
   local strID = string.format('%s:%s', strOwner, strName)
   self.strID = strID
 
+  -- The "penlight" module is always useful.
+  self.pl = require'pl.import_into'()
+
   -- Create a new log target for the testcase.
   local tLogWriterParameter = require 'log.writer.prefix'.new(
     string.format('[Param %s] ', strID),
@@ -156,6 +159,22 @@ function Parameter:get()
   end
 
   return tValue
+end
+
+
+function Parameter:get_pretty()
+  local tValue = self:get()
+  local strType = type(tValue)
+  local strResult
+  if strType=='string' then
+    strResult = string.format('"%s"', tValue)
+  elseif strType=='table' then
+    strResult = self.pl.pretty.write(tValue)
+  else
+    strResult = tostring(tValue)
+  end
+
+  return strResult
 end
 
 
