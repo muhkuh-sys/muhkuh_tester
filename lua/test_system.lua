@@ -12,9 +12,6 @@ local fShowParameters = false
 -- No log file.
 local tLogFile = nil
 
--- Parameters for all modules.
-local atAllParameters = {}
-
 -- Run over all available test cases and get the test modules.
 local aModules = {}
 
@@ -55,7 +52,7 @@ local fHaveNetx = nil
 local function collect_testcases(auiTestCases)
   local tResult = true
 
-  for iCnt,uiTestCase in ipairs(auiTestCases) do
+  for _, uiTestCase in ipairs(auiTestCases) do
     -- Does a test with this number already exist?
     if aModules[uiTestCase]~=nil then
       tLogSystem.fatal('More than one test with the index %d exists.', uiTestCase)
@@ -67,7 +64,8 @@ local function collect_testcases(auiTestCases)
     local strTestCaseFilename = string.format("test%02d", uiTestCase)
 
     -- Load the test case.
-    local tModule = require(strTestCaseFilename)
+    local tClass = require(strTestCaseFilename)
+    local tModule = tClass(uiTestCase, tLogWriter, strLogLevel)
     aModules[uiTestCase] = tModule
   end
 
@@ -105,12 +103,12 @@ local function show_all_parameters()
 
     local atPrint = {}
     for iCnt1,tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
-      if tParameter.default==nil then
+      if tParameter.fHasDefaultValue~=true then
         strDefault = "no default value"
       else
-        strDefault = string.format("default: %s", tParameter.default)
+        strDefault = string.format("default: %s", tostring(tParameter.tDefaultValue))
       end
-      table.insert(atPrint, { string.format("%02d:%s", uiTestCase, tParameter.name), {tParameter.help, strDefault}})
+      table.insert(atPrint, { string.format("%02d:%s", uiTestCase, tParameter.strName), {tParameter.strHelp, strDefault}})
     end
     print_aligned(atPrint, "    %s  %s")
     print("")
@@ -135,27 +133,6 @@ local function get_module_index(strModuleName)
   end
 
   return iResult
-end
-
-
---- Find a parameter in a module.
--- Search the parameter list of a module for one name.
--- The search is done with an exact compare, so there are no wildcards or
--- regular expressions.
--- @param tModule The module to do the search in.
--- @param strParameterName The exact name of the parameter.
--- @return The parameter structure if the name was found, or nil if the name was not found.
-local function find_parameter(tModule, strParameterName)
-  tResult = nil
-
-  for iCnt,tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
-    if tParameter.name==strParameterName then
-      tResult = tParameter
-      break
-    end
-  end
-
-  return tResult
 end
 
 
@@ -336,7 +313,7 @@ end
 
 
 
-local function process_one_parameter(atParameters, strParameterLine)
+local function process_one_parameter(strParameterLine)
   local tResult = true
 
   -- Ignore end of file markers.
@@ -360,7 +337,7 @@ local function process_one_parameter(atParameters, strParameterLine)
       -- Iterate over all lines.
       for strLine in io.lines(strFilename) do
         if strLine~=nil then
-          tResult = process_one_parameter(atParameters, strLine)
+          tResult = process_one_parameter(strLine)
           if tResult~=true then
             break
           end
@@ -399,17 +376,13 @@ local function process_one_parameter(atParameters, strParameterLine)
         tLogSystem.fatal('The parameter "%s" uses an unknown module with index "%d".', strParameterLine, uiTestCase)
         tResult = nil
       else
-        tParameter = find_parameter(tModule, strParameterName)
+        tParameter = tModule.atParameter[strParameterName]
         if tParameter==nil then
           tLogSystem.fatal('The parameter "%s" uses the non-existing key "%s".', strParameterLine, strParameterName)
           tResult = nil
         else
-          -- Add the parameter to the array.
-          if atAllParameters[uiTestCase]==nil then
-            atParameters[uiTestCase] = {}
-          end
-          local atModuleParameter = atParameters[uiTestCase]
-          atModuleParameter[strParameterName] = strValue
+          -- Set the parameter.
+          tParameter:set(strValue)
         end
       end
     end
@@ -423,23 +396,9 @@ end
 local function collect_parameters()
   local tResult = true
 
-  -- Expand all file entries recursively.
-
-  -- Collect all default parameter.
-  for uiTestCase,tModule in ipairs(aModules) do
-    local strTestName = tModule.CFG_strTestName
-
-    local atParameters = {}
-    for iCnt1,tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
-      atParameters[tParameter.name] = tParameter.default
-    end
-
-    atAllParameters[uiTestCase] = atParameters
-  end
-
   -- Process all parameters.
-  for iCnt,strParameter in ipairs(astrRawParameters) do
-    tResult = process_one_parameter(atAllParameters, strParameter)
+  for _, strParameter in ipairs(astrRawParameters) do
+    tResult = process_one_parameter(strParameter)
     if tResult~=true then
       break
     end
@@ -453,29 +412,16 @@ end
 local function check_parameters()
   -- Check all parameters.
   local fParametersOk = true
-  for uiTestCase,tModule in ipairs(aModules) do
+  for uiTestCase, tModule in ipairs(aModules) do
     -- Get the parameters for the module.
-    local atParameters = atAllParameters[uiTestCase]
+    local atParameters = tModule.CFG_aParameterDefinitions
 
-    for iCntParameter,tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
-      -- Does the parameter exist?
-      local tValue = atParameters[tParameter.name]
-      if tValue==nil then
-        -- The parameter does not exist. Is it mandatory?
-        if tParameter.mandatory==true then
-          -- Yes, it is mandatory. That's an error.
-          tLogSystem.fatal('The mandatory parameter %02d:%s is missing.', uiTestCase, tParameter.name)
-          fParametersOk = false
-        end
-      else
-        -- The parameter exists. Check the value if a validate function exists.
-        if tParameter.validate~=nil then
-          fValid, strError = tParameter.validate(tValue, tParameter.constrains)
-          if fValid==false then
-            tLogSystem.fatal('The parameter %02d:%s is invalid: %s', uiTestCase, tParameter.name, strError)
-            fParametersOk = false
-          end
-        end
+    for _, tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
+      -- Validate the parameter.
+      local fValid, strError = tParameter:validate()
+      if fValid==false then
+        tLogSystem.fatal('The parameter %02d:%s is invalid: %s', uiTestCase, tParameter.strName, strError)
+        fParametersOk = false
       end
     end
   end
@@ -564,7 +510,7 @@ local function run_tests()
     tLogSystem.info('Running testcase %d (%s).', uiTestCase, strTestCaseName)
 
     -- Get the parameters for the module.
-    local atParameters = atAllParameters[uiTestCase]
+    local atParameters = tModule.CFG_aParameterDefinitions
 
     -- Show all parameters for the test case.
     tLogSystem.info("__/Parameters/________________________________________________________________")
@@ -572,27 +518,14 @@ local function run_tests()
       tLogSystem.info('Testcase %d (%s) has no parameter.', uiTestCase, strTestCaseName)
     else
       tLogSystem.info('Parameters for testcase %d (%s):', uiTestCase, strTestCaseName)
-      for strParameterName, strParameterValue in pairs(atParameters) do
-        tLogSystem.info('  %02d:%s = %s', uiTestCase, strParameterName, strParameterValue)
+      for _, tParameter in pairs(atParameters) do
+        tLogSystem.info('  %02d:%s = %s', uiTestCase, tParameter.strName, tParameter:get())
       end
     end
     tLogSystem.info("______________________________________________________________________________")
 
-    -- Create a new log target for the testcase.
-    local tLogWriterTestcase = require 'log.writer.prefix'.new(
-      string.format('[Test %02d] ', uiTestCase),
-      tLogWriter
-    )
-    local tLogTestcase = require 'log'.new(
-      -- maximum log level
-      strLogLevel,
-      tLogWriterTestcase,
-      -- Formatter
-      require 'log.formatter.format'.new()
-    )
-
     -- Execute the test code. Write a stack trace to the debug logger if the test case crashes.
-    fStatus, tResult = xpcall(function() tModule:run(atParameters, tLogTestcase) end, function(tErr) tLogSystem.debug(debug.traceback()) return tErr end)
+    fStatus, tResult = xpcall(function() tModule:run() end, function(tErr) tLogSystem.debug(debug.traceback()) return tErr end)
     tLogSystem.info('Testcase %d (%s) finished.', uiTestCase, strTestCaseName)
     if not fStatus then
       local strError
