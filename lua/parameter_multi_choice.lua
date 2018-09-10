@@ -86,7 +86,7 @@ function Parameter_MultiChoice:__validate(tValue)
   local astrRawValues = self.pl.stringx.split(tostring(tValue), ',')
   local astrValues = {}
   for _, strValue in ipairs(astrRawValues) do
-    strValue = self.pl.string.strip(strValue)
+    strValue = self.pl.stringx.strip(strValue)
     if strValue~='' then
       table.insert(astrValues, strValue)
     end
