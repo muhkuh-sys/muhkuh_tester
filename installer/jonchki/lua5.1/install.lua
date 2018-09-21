@@ -20,16 +20,21 @@ function tPostTriggerAction.__parseTests_StartElement(tParser, strName, atAttrib
 
   if strCurrentPath=='/MuhkuhTest/Testcase' then
     local strID = atAttributes['id']
+    local strFile = atAttributes['file']
     local strName = atAttributes['name']
-    if strID==nil or strID=='' then
+    if (strID==nil or strID=='') and (strFile==nil or strFile=='') then
       aLxpAttr.tResult = nil
-      aLxpAttr.tLog.error('Error in line %d, col %d: missing "id".', iPosLine, iPosColumn)
+      aLxpAttr.tLog.error('Error in line %d, col %d: one of "id" or "file" must be present, but none found.', iPosLine, iPosColumn)
+    elseif (strID~=nil and strID~='') and (strFile~=nil and strFile~='') then
+      aLxpAttr.tResult = nil
+      aLxpAttr.tLog.error('Error in line %d, col %d: one of "id" or "file" must be present, but both found.', iPosLine, iPosColumn)
     elseif strName==nil or strName=='' then
       aLxpAttr.tResult = nil
       aLxpAttr.tLog.error('Error in line %d, col %d: missing "name".', iPosLine, iPosColumn)
     else
       local tTestCase = {
         id = strID,
+        file = strFile,
         name = strName,
         parameter = {}
       }
@@ -175,7 +180,7 @@ function tPostTriggerAction:run(tInstallHelper)
       tResult = nil
     else
       -- Generate the "parameters.txt" file.
-      local strPathInstallBase = t:replace_template('${install_base}')
+      local strPathInstallBase = tInstallHelper:replace_template('${install_base}')
       local strParametersFilename = pl.path.join(strPathInstallBase, 'parameters.txt')
       tLog.debug('Generating parameters file "%s".', strParametersFilename)
       local astrParametersTxt = {}
@@ -203,7 +208,8 @@ function tPostTriggerAction:run(tInstallHelper)
           if uiTestIndex==uiMaxTestIndex then
             strSep = ' '
           end
-          table.insert(astrSystemLua, string.format('  %d%s    -- %s', uiTestIndex, strSep, tTestCase.id))
+          local strTestComment = tTestCase.id or tTestCase.name
+          table.insert(astrSystemLua, string.format('  %d%s    -- %s', uiTestIndex, strSep, strTestComment))
         end
         table.insert(astrSystemLua, [[}]])
         table.insert(astrSystemLua, [[]])
@@ -220,60 +226,105 @@ function tPostTriggerAction:run(tInstallHelper)
         else
           -- Run all installer scripts for the test case.
           for uiTestCaseId, tTestCase in ipairs(atTestCases) do
-            -- The test ID identifies the artifact providing the test script.
-            -- It has the form GROUP.MODULE.ARTIFACT .
+            if tTestCase.id~=nil then
+              -- The test ID identifies the artifact providing the test script.
+              -- It has the form GROUP.MODULE.ARTIFACT .
 
-            -- Get the path to the test case install script in the depack folder.
-            local strDepackPath = tInstallHelper:replace_template(string.format('${depack_path_%s}', tTestCase.id))
-            local strInstallScriptPath = pl.path.join(strDepackPath, 'install_testcase.lua')
-            tLog.debug('Run test case install script "%s".', strInstallScriptPath)
-            if pl.path.exists(strInstallScriptPath)~=strInstallScriptPath then
-              tLog.error('The test case install script "%s" for the test %s / %s does not exist.', strInstallScriptPath, tTestCase.id, tTestCase.name)
-              tResult = nil
-              break
-            elseif pl.path.isfile(strInstallScriptPath)~=true then
-              tLog.error('The test case install script "%s" for the test %s / %s is no regular file.', strInstallScriptPath, tTestCase.id, tTestCase.name)
-              tResult = nil
-              break
-            else
-              -- Call the install script.
-              local tFileResult, strError = pl.utils.readfile(strInstallScriptPath, false)
-              if tFileResult==nil then
+              -- Get the path to the test case install script in the depack folder.
+              local strDepackPath = tInstallHelper:replace_template(string.format('${depack_path_%s}', tTestCase.id))
+              local strInstallScriptPath = pl.path.join(strDepackPath, 'install_testcase.lua')
+              tLog.debug('Run test case install script "%s".', strInstallScriptPath)
+              if pl.path.exists(strInstallScriptPath)~=strInstallScriptPath then
+                tLog.error('The test case install script "%s" for the test %s / %s does not exist.', strInstallScriptPath, tTestCase.id, tTestCase.name)
                 tResult = nil
-                tLog.error('Failed to read the test case install script "%s": %s', strInstallScriptPath, strError)
+                break
+              elseif pl.path.isfile(strInstallScriptPath)~=true then
+                tLog.error('The test case install script "%s" for the test %s / %s is no regular file.', strInstallScriptPath, tTestCase.id, tTestCase.name)
+                tResult = nil
                 break
               else
-                -- Parse the install script.
-                local strInstallScript = tFileResult
-                tResult, strError = loadstring(strInstallScript, strInstallScriptPath)
-                if tResult==nil then
+                -- Call the install script.
+                local tFileResult, strError = pl.utils.readfile(strInstallScriptPath, false)
+                if tFileResult==nil then
                   tResult = nil
-                  tLog.error('Failed to parse the test case install script "%s": %s', strInstallScriptPath, strError)
+                  tLog.error('Failed to read the test case install script "%s": %s', strInstallScriptPath, strError)
                   break
                 else
-                  local fnInstall = tResult
-
-                  -- Set the artifact's depack path as the current working folder.
-                  tInstallHelper:setCwd(strDepackPath)
-
-                  -- Set the current artifact identification for error messages.
-                  tInstallHelper:setId('Post Actions')
-
-                  -- Call the install script.
-                  tResult, strError = pcall(fnInstall, tInstallHelper, uiTestCaseId, tTestCase.name)
-                  if tResult~=true then
+                  -- Parse the install script.
+                  local strInstallScript = tFileResult
+                  tResult, strError = loadstring(strInstallScript, strInstallScriptPath)
+                  if tResult==nil then
                     tResult = nil
-                    tLog.error('Failed to run the install script "%s": %s', strInstallScriptPath, tostring(strError))
+                    tLog.error('Failed to parse the test case install script "%s": %s', strInstallScriptPath, strError)
                     break
+                  else
+                    local fnInstall = tResult
 
-                  -- The second value is the return value.
-                  elseif strError~=true then
-                    tResult = nil
-                    tLog.error('The install script "%s" returned "%s".', strInstallScriptPath, tostring(strError))
-                    break
+                    -- Set the artifact's depack path as the current working folder.
+                    tInstallHelper:setCwd(strDepackPath)
+
+                    -- Set the current artifact identification for error messages.
+                    tInstallHelper:setId('Post Actions')
+
+                    -- Call the install script.
+                    tResult, strError = pcall(fnInstall, tInstallHelper, uiTestCaseId, tTestCase.name)
+                    if tResult~=true then
+                      tResult = nil
+                      tLog.error('Failed to run the install script "%s": %s', strInstallScriptPath, tostring(strError))
+                      break
+
+                    -- The second value is the return value.
+                    elseif strError~=true then
+                      tResult = nil
+                      tLog.error('The install script "%s" returned "%s".', strInstallScriptPath, tostring(strError))
+                      break
+                    end
                   end
                 end
               end
+
+            elseif tTestCase.file~=nil then
+              local strName = tostring(tTestCase.name)
+
+              -- The test case uses a local starter file.
+              local strStarterFile = pl.path.exists(tTestCase.file)
+              if strStarterFile~=tTestCase.file then
+                tLog.error('The start file "%s" for test %s does not exist.', tostring(tTestCase.file), strName)
+                tResult = nil
+                break
+              end
+
+              -- Copy and filter the local file.
+              tLog.debug('Installing local test case with ID %02d and name "%s".', uiTestCaseId, strName)
+
+              -- Load the starter script.
+              local strTestTemplate, strError = pl.utils.readfile(strStarterFile, false)
+              if strTestTemplate==nil then
+                tLog.error('Failed to open the test template "%s": %s', strStarterFile, strError)
+                tResult = nil
+                break
+              else
+                local astrReplace = {
+                  ['ID'] = string.format('%02d', uiTestCaseId),
+                  ['NAME'] = strName
+                }
+                local strTestLua = string.gsub(strTestTemplate, '@([^@]+)@', astrReplace)
+
+                -- Write the test script to the installation base directory.
+                local strDestinationPath = tInstallHelper:replace_template(string.format('${install_base}/test%02d.lua', uiTestCaseId))
+                local tFileResult, strError = pl.utils.writefile(strDestinationPath, strTestLua, false)
+                if tFileResult~=true then
+                  tLog.error('Failed to write the test to "%s": %s', strDestinationPath, strError)
+                  tResult = nil
+                  break
+                end
+              end
+
+            else
+              tLog.error('The test %s has no "id" or "file" attribute.', tostring(tTestCase.name))
+              tResult = nil
+              break
+
             end
           end
         end
