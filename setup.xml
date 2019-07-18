@@ -2,7 +2,7 @@
 <?xml-stylesheet type="text/xsl" href="mbs/setup2html.xsl"?>
 
 <muhkuh_buildsystem project="org.muhkuh.tests.spi_flash">
-	<project_version>1.2.2</project_version>
+	<project_version>1.2.3</project_version>
 
 	<scons>
 		<group>org.scons</group>
