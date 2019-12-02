@@ -24,9 +24,6 @@ local auiTests = {}
 -- This is the filename of the log file.
 local strLogFileName = nil
 
--- This is the pattern for the interface.
-local strInterfacePattern = nil
-
 local pl = require'pl.import_into'()
 local argparse = require 'argparse'
 
@@ -185,11 +182,10 @@ local function parse_commandline_arguments(astrArg, auiAllTestCases)
     :argname('<FILE>')
     :default(nil)
     :target('strLogFileName')
-  tParser:option('-i --interface')
-    :description('Select the first interface which matches the INTERFACE-PATTERN. The special value ASK shows a menu with all available interfaces and prompts the user to select one.')
-    :argname('<INTERFACE-PATTERN>')
-    :default('ASK')
-    :target('strInterfacePattern')
+  tParser:flag('-i --interactive-plugin-selection')
+    :description('Ask the user to pick a plugin. The default is to select a plugin automatically.')
+    :default(false)
+    :target('fInteractivePluginSelection')
   tParser:option('-p --parameter')
     :description('Set the parameter PARAMETER of test case TEST-CASE-ID to the value VALUE.')
     :argname('<TEST-CASE-ID>:<PARAMETER>=<VALUE>')
@@ -230,9 +226,6 @@ local function parse_commandline_arguments(astrArg, auiAllTestCases)
 
   -- Save the selected log level.
   strLogLevel = tArgs.strLogLevel
-
-  -- Save the slected interface.
-  strInterfacePattern = tArgs.strInterfacePattern
 
   fShowParameters = tArgs.fShowParameters
 
@@ -435,54 +428,6 @@ end
 
 
 
-local function open_netx_connection()
-  local tResult = true
-
-  -- Open the connection to the netX.
-  if fHaveNetx==true then
-    if string.upper(strInterfacePattern)=="ASK" then
-      tLogSystem.debug('Not opening a default netX connection as the interface pattern is "ASK".')
-    else
-      -- No interface detected yet.
-      local tPlugin = nil
-
-      -- Detect all interfaces.
-      local aDetectedInterfaces = {}
-      for iCnt,tPlugin in ipairs(__MUHKUH_PLUGINS) do
-        tPlugin:DetectInterfaces(aDetectedInterfaces)
-      end
-
-      -- Search all detected interfaces for the pattern.
-      tLogSystem.debug('Searching for an interface with the pattern "%s".', strInterfacePattern)
-      for iInterfaceIdx, tInterface in ipairs(aDetectedInterfaces) do
-        local strName = tInterface:GetName()
-        if string.match(strName, strInterfacePattern)==nil then
-          tLogSystem.debug('Not connection to plugin "%s" as it does not match the interface pattern.', strName)
-        else
-          tLogSystem.info('Connecting to plugin "%s".', strName)
-          tPlugin = aDetectedInterfaces[iInterfaceIdx]:Create()
-
-          tPlugin:Connect()
-
-          break
-        end
-      end
-
-      -- Found the interface?
-      if tPlugin==nil then
-        tLogSystem.fatal('No interface matched the pattern "%s".', strInterfacePattern)
-        tResult = nil
-      else
-        tester.setCommonPlugin(tPlugin)
-      end
-    end
-  end
-
-  return tResult
-end
-
-
-
 local function close_netx_connection()
   if fHaveNetx==true then
     tLogSystem.debug('Closing any netX connection.')
@@ -542,7 +487,7 @@ local function run_tests()
   end
 
   -- Close the connection to the netX.
-  close_netx_connection()
+  tester:closeCommonPlugin()
 
   -- Print the result in huge letters.
   if fTestResult==true then
@@ -595,6 +540,10 @@ end
 function run(astrArg, auiTestCases)
   parse_commandline_arguments(astrArg, auiTestCases)
 
+  -- Create the global tester.
+  local cTester = require 'tester_cli'
+  _G.tester = cTester(tLogSystem)
+
   -- Does the "tester" module exist?
   if package.loaded['tester']~=nil then
     tLogSystem.debug('Module "tester" found. Assuming a netX connection.')
@@ -613,10 +562,7 @@ function run(astrArg, auiTestCases)
       if tResult==true then
         tResult = check_parameters()
         if tResult==true then
-          tResult = open_netx_connection()
-          if tResult==true then
-            tResult = run_tests()
-          end
+          tResult = run_tests()
         end
       end
     end
