@@ -93,14 +93,6 @@ tArcList0.AddFiles('doc/',
 	doc)
 
 tArcList0.AddFiles('lua/',
-	'lua/parameter_instances.lua',
-	'lua/parameter.lua',
-	'lua/parameter_multi_choice.lua',
-	'lua/parameter_single_choice.lua',
-	'lua/parameter_uint16.lua',
-	'lua/parameter_uint32.lua',
-	'lua/parameter_uint8.lua',
-	'lua/test_class.lua',
 	tTestSystemLua)
 
 tArcList0.AddFiles('wrapper/linux/',
