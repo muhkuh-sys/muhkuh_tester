@@ -468,19 +468,32 @@ end
 
 
 
-local function check_parameters()
+local function check_parameters(tTestDescription)
   -- Check all parameters.
   local fParametersOk = true
-  for uiTestCase, tModule in ipairs(atModules) do
-    -- Get the parameters for the module.
-    local atParameters = tModule.CFG_aParameterDefinitions
 
-    for _, tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
-      -- Validate the parameter.
-      local fValid, strError = tParameter:validate()
-      if fValid==false then
-        tLogSystem.fatal('The parameter %02d:%s is invalid: %s', uiTestCase, tParameter.strName, strError)
-        fParametersOk = false
+  -- Get all test names.
+  local astrTestNames = tTestDescription:getTestNames()
+
+  -- Loop over all active tests.
+  local uiNumberOfTests = tTestDescription:getNumberOfTests()
+  for uiTestIndex = 1, uiNumberOfTests do
+    local tModule = atModules[uiTestIndex]
+    local strTestCaseName = astrTestNames[uiTestIndex]
+
+    if tModule==nil then
+      tLogSystem.debug('Skipping deactivated test %02d:%s .', uiTestIndex, strTestCaseName)
+    else
+      -- Get the parameters for the module.
+      local atParameters = tModule.CFG_aParameterDefinitions
+
+      for _, tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
+        -- Validate the parameter.
+        local fValid, strError = tParameter:validate()
+        if fValid==false then
+          tLogSystem.fatal('The parameter %02d:%s is invalid: %s', uiTestCase, tParameter.strName, strError)
+          fParametersOk = false
+        end
       end
     end
   end
@@ -636,7 +649,7 @@ function run()
       else
         tResult = collect_parameters(tTestDescription)
         if tResult==true then
-          tResult = check_parameters()
+          tResult = check_parameters(tTestDescription)
           if tResult==true then
             tResult = run_tests()
           end
