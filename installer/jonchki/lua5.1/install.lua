@@ -306,6 +306,9 @@ end
 -- Copy the complete "lua" folder.
 t:install('lua/', '${install_lua_path}/')
 
+-- Copy the system script.
+t:install('system.lua', '${install_base}')
+
 -- Copy the complete "doc" folder.
 t:install('doc/', '${install_doc}/')
 

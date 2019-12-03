@@ -66,7 +66,7 @@ doc = atEnv.DEFAULT.Asciidoc('targets/doc/org.muhkuh.tools.muhkuh_tester.html', 
 #
 # Add the version numbers to the tester script.
 #
-tTestSystemLua = atEnv.DEFAULT.Version('#targets/lua/test_system.lua', 'lua/test_system.lua')
+tTestSystemLua = atEnv.DEFAULT.Version('#targets/lua/test_system.lua', 'local/lua/test_system.lua')
 
 
 #----------------------------------------------------------------------------
@@ -87,7 +87,8 @@ strArtifact0 = 'lua5.1-muhkuh_tester_cli'
 tArcList0 = atEnv.DEFAULT.ArchiveList('zip')
 
 tArcList0.AddFiles('',
-	'installer/jonchki/lua5.1/install.lua')
+	'installer/jonchki/lua5.1/install.lua',
+	'local/system.lua')
 
 tArcList0.AddFiles('doc/',
 	doc)
