@@ -173,55 +173,22 @@ function tPostTriggerAction:run(tInstallHelper)
     tLog.error('The path "%s" is no regular file.', strTestsFile)
     tResult = nil
   else
-    tLog.debug('Parsing tests file "%s".', strTestsFile)
-    local atTestCases = self:__parse_tests(tLog, strTestsFile)
-    if atTestCases==nil then
-      tLog.error('Failed to parse the test configuration file "%s".', strTestsFile)
+    -- Copy the tests file.
+    local strTestsFileContents, strError = pl.utils.readfile(strTestsFile, false)
+    if strTestsFileContents==nil then
+      tLog.error('Failed to read the file "%s": %s', strTestsFile, strError)
       tResult = nil
     else
-      -- Generate the "parameters.txt" file.
-      local strPathInstallBase = tInstallHelper:replace_template('${install_base}')
-      local strParametersFilename = pl.path.join(strPathInstallBase, 'parameters.txt')
-      tLog.debug('Generating parameters file "%s".', strParametersFilename)
-      local astrParametersTxt = {}
-      for uiTestIndex, tTestCase in ipairs(atTestCases) do
-        for _, tParameter in ipairs(tTestCase.parameter) do
-          table.insert(astrParametersTxt, string.format('%d:%s=%s', uiTestIndex, tParameter.name, tParameter.value))
-        end
-      end
-      local tFileResult, strError = pl.utils.writefile(strParametersFilename, table.concat(astrParametersTxt, '\n'), false)
-      if tFileResult~=true then
-        tLog.error('Failed to write the parameters to "parameters.txt": %s', strError)
+      local strDestinationPath = tInstallHelper:replace_template(string.format('${install_base}/%s', strTestsFile))
+      tResult, strError = pl.utils.writefile(strDestinationPath, strTestsFileContents, false)
+      if tResult~=true then
+        tLog.error('Failed to write the file "%s": %s', strDestinationPath, strError)
         tResult = nil
       else
-        -- Generate the "system.lua" file.
-        local astrSystemLua = {}
-        table.insert(astrSystemLua, [[require 'muhkuh_cli_init']])
-        table.insert(astrSystemLua, [[require 'test_system']])
-        table.insert(astrSystemLua, [[]])
-        table.insert(astrSystemLua, [[-- This is a list of all available test cases in this test suite.]])
-        table.insert(astrSystemLua, [[-- The test cases are specified by a number starting at 1.]])
-        table.insert(astrSystemLua, [[local auiTestCases = {]])
-        local uiMaxTestIndex = table.maxn(atTestCases)
-        for uiTestIndex, tTestCase in ipairs(atTestCases) do
-          strSep = ','
-          if uiTestIndex==uiMaxTestIndex then
-            strSep = ' '
-          end
-          local strTestComment = tTestCase.id or tTestCase.name
-          table.insert(astrSystemLua, string.format('  %d%s    -- %s', uiTestIndex, strSep, strTestComment))
-        end
-        table.insert(astrSystemLua, [[}]])
-        table.insert(astrSystemLua, [[]])
-        table.insert(astrSystemLua, [[local fTestResult = test_system.run(arg, auiTestCases)]])
-        table.insert(astrSystemLua, [[if fTestResult==true then]])
-        table.insert(astrSystemLua, [[  print("OK!")]])
-        table.insert(astrSystemLua, [[elseif fTestResult==false then]])
-        table.insert(astrSystemLua, [[  error("The test suite failed!")]])
-        table.insert(astrSystemLua, [[end]])
-        local tFileResult, strError = pl.utils.writefile(pl.path.join(strPathInstallBase, 'system.lua'), table.concat(astrSystemLua, '\n'), false)
-        if tFileResult~=true then
-          tLog.error('Failed to write the system script to "system.lua": %s', strError)
+        tLog.debug('Parsing tests file "%s".', strTestsFile)
+        local atTestCases = self:__parse_tests(tLog, strTestsFile)
+        if atTestCases==nil then
+          tLog.error('Failed to parse the test configuration file "%s".', strTestsFile)
           tResult = nil
         else
           -- Run all installer scripts for the test case.

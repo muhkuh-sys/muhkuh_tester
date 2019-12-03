@@ -13,19 +13,20 @@ local fShowParameters = false
 local tLogFile = nil
 
 -- Run over all available test cases and get the test modules.
-local aModules = {}
+local atModules = {}
 
 -- This list collects all parameters from the CLI. They are not split into their components.
 local astrRawParameters = {}
 
 -- This list collects all test cases to run.
-local auiTests = {}
+local auiTests = nil
 
 -- This is the filename of the log file.
 local strLogFileName = nil
 
 local pl = require'pl.import_into'()
 local argparse = require 'argparse'
+local TestDescription = require 'test_description'
 
 -- This is a log writer connected to all outputs (console and optionally file).
 -- It is used to create new log targets with special prefixes for each test.
@@ -40,18 +41,16 @@ local tLogSystem = nil
 -- option was specified.
 local strDefaultParameterFile = 'parameters.txt'
 
-local fHaveNetx = nil
-
 
 ------------------------------------------------------------------------------
 
 
-local function collect_testcases(auiTestCases)
+local function collect_testcases()
   local tResult = true
 
-  for _, uiTestCase in ipairs(auiTestCases) do
+  for _, uiTestCase in ipairs(auiTests) do
     -- Does a test with this number already exist?
-    if aModules[uiTestCase]~=nil then
+    if atModules[uiTestCase]~=nil then
       tLogSystem.fatal('More than one test with the index %d exists.', uiTestCase)
       tResult = nil
       break
@@ -63,7 +62,7 @@ local function collect_testcases(auiTestCases)
     -- Load the test case.
     local tClass = require(strTestCaseFilename)
     local tModule = tClass(uiTestCase, tLogWriter, strLogLevel)
-    aModules[uiTestCase] = tModule
+    atModules[uiTestCase] = tModule
   end
 
   return tResult
@@ -94,7 +93,7 @@ end
 local function show_all_parameters()
   print("All parameters:")
   print("")
-  for uiTestCase,tModule in ipairs(aModules) do
+  for uiTestCase,tModule in ipairs(atModules) do
     local strTestName = tModule.CFG_strTestName
     print(string.format("  Test case %02d: '%s'", uiTestCase, strTestName))
 
@@ -122,7 +121,7 @@ local function get_module_index(strModuleName)
   iResult = nil
 
   -- Loop over all available modules.
-  for iCnt,tModule in ipairs(aModules) do
+  for iCnt,tModule in ipairs(atModules) do
     if tModule.CFG_strTestName==strModuleName then
       iResult = iCnt
       break
@@ -134,7 +133,7 @@ end
 
 
 
-local function parse_commandline_arguments(astrArg, auiAllTestCases)
+local function parse_commandline_arguments()
   local atLogLevels = {
     'debug',
     'info',
@@ -275,38 +274,16 @@ local function parse_commandline_arguments(astrArg, auiAllTestCases)
 
 
   astrRawParameters = tArgs.astrRawParameters
-  -- Search the list of parameters for a file (i.e. a string entry).
-  local fParameterFileOnCli = false
-  for _, strParameter in pairs(astrRawParameters) do
-    if string.sub(strParameter, 1, 1)=='@' then
-      -- This is a parameter file.
-      fParameterFileOnCli = true
-      break
-    end
-  end
-  -- If no parameter file was specified, check if the default parameter file exists.
-  if fParameterFileOnCli~=true then
-    tLogSystem.debug('No parameter file specified. Checking for the default file "%s".', strDefaultParameterFile)
-    local strParametersFile = pl.path.exists(strDefaultParameterFile)
-    if strParametersFile==nil then
-      tLogSystem.debug('The default parameter file does not exist.')
-    else
-      tLogSystem.debug('The default parameter file exists, inserting it before all other parameter.')
-      table.insert(astrRawParameters, 1, '@' .. strParametersFile)
-    end
-  end
 
   -- If no test cases were specified run all of them.
-  if #tArgs.auiTests==0 then
-    auiTests = auiAllTestCases
-  else
+  if #tArgs.auiTests~=0 then
     auiTests = tArgs.auiTests
   end
 end
 
 
 
-local function process_one_parameter(strParameterLine)
+local function process_one_parameter(strParameterLine, atCliParameters)
   local tResult = true
 
   -- Ignore end of file markers.
@@ -330,7 +307,7 @@ local function process_one_parameter(strParameterLine)
       -- Iterate over all lines.
       for strLine in io.lines(strFilename) do
         if strLine~=nil then
-          tResult = process_one_parameter(strLine)
+          tResult = process_one_parameter(strLine, atCliParameters)
           if tResult~=true then
             break
           end
@@ -339,20 +316,25 @@ local function process_one_parameter(strParameterLine)
     end
   else
     tLogSystem.debug('Processing parameter "%s".', strParameterLine)
+    local uiTestCase
     -- Try to parse the parameter line with a test number ("01:key=value").
     strTestCase, strParameterName, strValue = string.match(strParameterLine, "([0-9]+):([0-9a-zA-Z_]+)=(.*)")
-    if strTestCase==nil or strParameterName==nil or strValue==nil then
+    if strTestCase==nil then
       -- Try to parse the parameter line with a test name ("EthernetTest:key=value").
       strTestCase, strParameterName, strValue = string.match(strParameterLine, "([0-9a-zA-Z_]+):([0-9a-zA-Z_]+)=(.*)")
-      if strTestCase==nil or strParameterName==nil or strValue==nil then
+      if strTestCase==nil then
         tLogSystem.fatal("The parameter definition has an invalid format: '%s'", strParameterLine)
         tResult = nil
       else
-        -- Get the number for the test case name.
-        uiTestCase = get_module_index(strTestCase)
-        if uiTestCase==nil then
-          tLogSystem.fatal('The parameter "%s" uses an unknown test name: "%s".', strParameterLine, strTestCase)
-          tResult = nil
+        if strTestCase=='system' then
+          uiTestCase = 0
+        else
+          -- Get the number for the test case name.
+          uiTestCase = get_module_index(strTestCase)
+          if uiTestCase==nil then
+            tLogSystem.fatal('The parameter "%s" uses an unknown test name: "%s".', strParameterLine, strTestCase)
+            tResult = nil
+          end
         end
       end
     else
@@ -364,20 +346,7 @@ local function process_one_parameter(strParameterLine)
     end
 
     if tResult~=nil then
-      tModule = aModules[uiTestCase]
-      if tModule==nil then
-        tLogSystem.fatal('The parameter "%s" uses an unknown module with index "%d".', strParameterLine, uiTestCase)
-        tResult = nil
-      else
-        tParameter = tModule.atParameter[strParameterName]
-        if tParameter==nil then
-          tLogSystem.fatal('The parameter "%s" uses the non-existing key "%s".', strParameterLine, strParameterName)
-          tResult = nil
-        else
-          -- Set the parameter.
-          tParameter:set(strValue)
-        end
-      end
+      table.insert(atCliParameters, {id=uiTestCase, name=strParameterName, value=strValue})
     end
   end
 
@@ -386,14 +355,111 @@ end
 
 
 
-local function collect_parameters()
+local function collect_parameters(tTestDescription)
   local tResult = true
 
-  -- Process all parameters.
+  -- Collect all parameters from the command line.
+  local atCliParameters = {}
   for _, strParameter in ipairs(astrRawParameters) do
-    tResult = process_one_parameter(strParameter)
+    tResult = process_one_parameter(strParameter, atCliParameters)
     if tResult~=true then
       break
+    end
+  end
+
+  if tResult==true then
+    -- Get all test names.
+    local astrTestNames = tTestDescription:getTestNames()
+
+    -- Loop over all active tests and apply the tests from the XML.
+    local uiNumberOfTests = tTestDescription:getNumberOfTests()
+    for uiTestIndex = 1, uiNumberOfTests do
+      local tModule = atModules[uiTestIndex]
+      local strTestCaseName = astrTestNames[uiTestIndex]
+
+      if tModule==nil then
+        tLogSystem.debug('Skipping deactivated test %02d:%s .', uiTestIndex, strTestCaseName)
+      else
+        -- Get the parameters for the module.
+        local atParametersModule = tModule.atParameter or {}
+
+        -- Get the parameters from the XML.
+        local atParametersXml = tTestDescription:getTestCaseParameters(uiTestIndex)
+        for _, tParameter in ipairs(atParametersXml) do
+          local strParameterName = tParameter.name
+          local strParameterValue = tParameter.value
+          local strParameterConnection = tParameter.connection
+
+          -- Does the parameter exist?
+          tParameter = atParametersModule[strParameterName]
+          if tParameter==nil then
+            tLogSystem.fatal('The parameter "%s" does not exist in test case %d (%s).', strParameterName, uiTestIndex, strTestCaseName)
+            tResult = nil
+            break
+          else
+            if strParameterValue~=nil then
+              -- This is a direct assignment of a value.
+              tParameter:set(strParameterValue)
+            elseif strParameterConnection~=nil then
+              -- This is a connection to another value.
+              local strClass, strName = string.match(strParameterConnection, '^([^:]+):(.+)')
+              if strClass==nil then
+                tLogSystem.fatal('Parameter "%s" of test %d has an invalid connection "%s".', strParameterName, uiTestIndex, strParameterConnection)
+                tResult = nil
+                break
+              else
+                -- For now accept only system values.
+                if strClass~='system' then
+                  tLogSystem.fatal('The connection target "%s" has an unknown class.', strParameterConnection)
+                  tResult = nil
+                  break
+                else
+                  tValue = m_atSystemParameter[strName]
+                  if tValue==nil then
+                    tLogSystem.fatal('The connection target "%s" has an unknown name.', strParameterConnection)
+                    tResult = nil
+                    break
+                  else
+                    tParameter:set(tostring(tValue))
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
+    -- Apply all parameters from the command line.
+    for _, tParam in pairs(atCliParameters) do
+      local uiModuleId = tParam.id
+      local strParameterName = tParam.name
+      tLogSystem.debug('Apply CLI parameter for module #%d, "%s"="%s".', uiModuleId, strParameterName, tParam.value)
+
+      -- Get the module.
+      local tModule
+      if uiModuleId==0 then
+        tModule = m_atSystemParameter
+      else
+        tModule = atModules[uiModuleId]
+        if tModule==nil then
+          tLogSystem.fatal('No module with index %d found.', uiModuleId)
+          tResult = nil
+          break
+        end
+      end
+      if tModule~=nil then
+        -- Get the parameter.
+        local tParameter = tModule.atParameter[strParameterName]
+        if tParameter==nil then
+          tLogSystem.fatal('Module %d has no parameter "%s".', uiModuleId, strParameterName)
+          tResult = nil
+          break
+        else
+          -- Set the parameter.
+          tParameter:set(tParam.value)
+        end
+      end
     end
   end
 
@@ -405,7 +471,7 @@ end
 local function check_parameters()
   -- Check all parameters.
   local fParametersOk = true
-  for uiTestCase, tModule in ipairs(aModules) do
+  for uiTestCase, tModule in ipairs(atModules) do
     -- Get the parameters for the module.
     local atParameters = tModule.CFG_aParameterDefinitions
 
@@ -428,22 +494,13 @@ end
 
 
 
-local function close_netx_connection()
-  if fHaveNetx==true then
-    tLogSystem.debug('Closing any netX connection.')
-    tester.closeCommonPlugin()
-  end
-end
-
-
-
 local function run_tests()
   -- Run all enabled modules with their parameter.
   local fTestResult = true
 
   for iCnt,uiTestCase in ipairs(auiTests) do
     -- Get the module for the test index.
-    tModule = aModules[uiTestCase]
+    tModule = atModules[uiTestCase]
     if tModule==nil then
       tLogSystem.fatal('Test case %02d not found!', uiTestCase)
       fTestResult = false
@@ -537,32 +594,52 @@ end
 
 
 
-function run(astrArg, auiTestCases)
-  parse_commandline_arguments(astrArg, auiTestCases)
+function run()
+  parse_commandline_arguments()
 
-  -- Create the global tester.
-  local cTester = require 'tester_cli'
-  _G.tester = cTester(tLogSystem)
-
-  -- Does the "tester" module exist?
-  if package.loaded['tester']~=nil then
-    tLogSystem.debug('Module "tester" found. Assuming a netX connection.')
-    fHaveNetx = true
+  -- Read the test.xml file.
+  local tTestDescription = TestDescription(tLogSystem)
+  local tResult = tTestDescription:parse('tests.xml')
+  if tResult~=true then
+    tLogSystem.error('Failed to parse the test description.')
   else
-    tLogSystem.debug('Module "tester" not found. Assuming no netX connection.')
-    fHaveNetx = false
-  end
-
-  tResult = collect_testcases(auiTestCases)
-  if tResult==true then
-    if fShowParameters==true then
-      show_all_parameters()
+    -- Run all tests if no test numbers were specified on the command line.
+    local uiTestCases = tTestDescription:getNumberOfTests()
+    if auiTests==nil then
+      -- Run all tests.
+      auiTests = {}
+      for uiCnt=1, uiTestCases do
+        table.insert(auiTests, uiCnt)
+      end
     else
-      tResult = collect_parameters()
-      if tResult==true then
-        tResult = check_parameters()
+      -- Check if the selection does not exceed the number of tests.
+      local fOk = true
+      for _, uiTestIndex in ipairs(auiTests) do
+        if uiTestIndex>uiTestCases then
+          tLogSystem.error('The selected test %d exceeds the number of total tests.', uiTestIndex)
+          fOk = false
+        end
+      end
+      if fOk~=true then
+        error('Invalid test index.')
+      end
+    end
+
+    -- Create the global tester.
+    local cTester = require 'tester_cli'
+    _G.tester = cTester(tLogSystem)
+
+    tResult = collect_testcases()
+    if tResult==true then
+      if fShowParameters==true then
+        show_all_parameters()
+      else
+        tResult = collect_parameters(tTestDescription)
         if tResult==true then
-          tResult = run_tests()
+          tResult = check_parameters()
+          if tResult==true then
+            tResult = run_tests()
+          end
         end
       end
     end
