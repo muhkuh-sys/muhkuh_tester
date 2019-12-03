@@ -21,6 +21,9 @@ local astrRawParameters = {}
 -- This list collects all test cases to run.
 local auiTests = nil
 
+-- This is the list of the system parameters.
+local m_atSystemParameter = nil
+
 -- This is the filename of the log file.
 local strLogFileName = nil
 
@@ -367,6 +370,16 @@ local function collect_parameters(tTestDescription)
     end
   end
 
+  -- Apply all system parameters.
+  for _, tParam in pairs(atCliParameters) do
+    -- Is this a system parameter?
+    if tParam.id==0 then
+      -- Set the parameter.
+      tLogSystem.debug('Setting system parameter "%s" to %s.', tParam.name, tParam.value)
+      m_atSystemParameter[tParam.name] = tParam.value
+    end
+  end
+
   if tResult==true then
     -- Get all test names.
     local astrTestNames = tTestDescription:getTestNames()
@@ -438,26 +451,24 @@ local function collect_parameters(tTestDescription)
 
       -- Get the module.
       local tModule
-      if uiModuleId==0 then
-        tModule = m_atSystemParameter
-      else
+      -- Do not process system parameters here.
+      if uiModuleId~=0 then
         tModule = atModules[uiModuleId]
         if tModule==nil then
           tLogSystem.fatal('No module with index %d found.', uiModuleId)
           tResult = nil
           break
-        end
-      end
-      if tModule~=nil then
-        -- Get the parameter.
-        local tParameter = tModule.atParameter[strParameterName]
-        if tParameter==nil then
-          tLogSystem.fatal('Module %d has no parameter "%s".', uiModuleId, strParameterName)
-          tResult = nil
-          break
         else
-          -- Set the parameter.
-          tParameter:set(tParam.value)
+          -- Get the parameter.
+          local tParameter = tModule.atParameter[strParameterName]
+          if tParameter==nil then
+            tLogSystem.fatal('Module %d has no parameter "%s".', uiModuleId, strParameterName)
+            tResult = nil
+            break
+          else
+            -- Set the parameter.
+            tParameter:set(tParam.value)
+          end
         end
       end
     end
@@ -491,7 +502,7 @@ local function check_parameters(tTestDescription)
         -- Validate the parameter.
         local fValid, strError = tParameter:validate()
         if fValid==false then
-          tLogSystem.fatal('The parameter %02d:%s is invalid: %s', uiTestCase, tParameter.strName, strError)
+          tLogSystem.fatal('The parameter %02d:%s is invalid: %s', uiTestIndex, tParameter.strName, strError)
           fParametersOk = false
         end
       end
@@ -609,6 +620,9 @@ end
 
 function run()
   parse_commandline_arguments()
+
+  -- Store the system parameters here.
+  m_atSystemParameter = {}
 
   -- Read the test.xml file.
   local tTestDescription = TestDescription(tLogSystem)
