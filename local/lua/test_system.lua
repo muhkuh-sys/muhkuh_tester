@@ -102,12 +102,19 @@ local function show_all_parameters()
 
     local atPrint = {}
     for iCnt1,tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
+      -- Is this parameter an input or an output?
+      local strInOut = 'IN '
+      if tParameter.fIsOutput==true then
+        strInOut = 'OUT'
+      end
+
       if tParameter.fHasDefaultValue~=true then
         strDefault = "no default value"
       else
         strDefault = string.format("default: %s", tostring(tParameter.tDefaultValue))
       end
-      table.insert(atPrint, { string.format("%02d:%s", uiTestCase, tParameter.strName), {tParameter.strHelp, strDefault}})
+
+      table.insert(atPrint, { string.format("%s %02d:%s", strInOut, uiTestCase, tParameter.strName), {tParameter.strHelp, strDefault}})
     end
     print_aligned(atPrint, "    %s  %s")
     print("")
@@ -409,24 +416,25 @@ local function collect_parameters(tTestDescription)
             tLogSystem.fatal('The parameter "%s" does not exist in test case %d (%s).', strParameterName, uiTestIndex, strTestCaseName)
             tResult = nil
             break
+          -- Is the parameter an "output"?
+          elseif tParameter.fIsOutput==true then
+            tLogSystem.fatal('The parameter "%s" in test case %d (%s) is an output.', strParameterName, uiTestIndex, strTestCaseName)
+            tResult = nil
+            break
           else
             if strParameterValue~=nil then
               -- This is a direct assignment of a value.
               tParameter:set(strParameterValue)
             elseif strParameterConnection~=nil then
-              -- This is a connection to another value.
+              -- This is a connection to another value or an output parameter.
               local strClass, strName = string.match(strParameterConnection, '^([^:]+):(.+)')
               if strClass==nil then
                 tLogSystem.fatal('Parameter "%s" of test %d has an invalid connection "%s".', strParameterName, uiTestIndex, strParameterConnection)
                 tResult = nil
                 break
               else
-                -- For now accept only system values.
-                if strClass~='system' then
-                  tLogSystem.fatal('The connection target "%s" has an unknown class.', strParameterConnection)
-                  tResult = nil
-                  break
-                else
+                -- Is this a connection to a system parameter?
+                if strClass=='system' then
                   tValue = m_atSystemParameter[strName]
                   if tValue==nil then
                     tLogSystem.fatal('The connection target "%s" has an unknown name.', strParameterConnection)
@@ -434,6 +442,39 @@ local function collect_parameters(tTestDescription)
                     break
                   else
                     tParameter:set(tostring(tValue))
+                  end
+                else
+                  -- This is not a system parameter.
+                  -- Try to interpret the class as a test number.
+                  local uiConnectionTargetTestCase = tonumber(strClass)
+                  if uiConnectionTargetTestCase==nil then
+                    -- The class is no number. Search the name.
+                    uiConnectionTargetTestCase = get_module_index(strClass)
+                    if uiTestCase==nil then
+                      tLogSystem.fatal('The connection "%s" uses an unknown test name: "%s".', strParameterConnection, strClass)
+                      tResult = nil
+                      break
+                    end
+                  end
+                  if uiConnectionTargetTestCase~=nil then
+                    -- Get the target module.
+                    local tTargetModule = atModules[uiConnectionTargetTestCase]
+                    if tTargetModule==nil then
+                      tLogSystem.info('Ignoring the connection "%s" to an inactive target: "%s".', strParameterConnection, strClass)
+                    else
+                      -- Get the parameter list of the target module.
+                      local atTargetParameters = tTargetModule.atParameter or {}
+                      -- Does the target module have a matching parameter?
+                      local tTargetParameter = atTargetParameters[strName]
+                      if tTargetParameter==nil then
+                        tLogSystem.fatal('The connection "%s" uses a non-existing parameter at the target: "%s".', strParameterConnection, strName)
+                        tResult = nil
+                        break
+                      else
+                        tLogSystem.info('Connecting %02d:%s to %02d:%s .', uiTestIndex, strParameterName, uiConnectionTargetTestCase, tTargetParameter.strName)
+                        tParameter:connect(tTargetParameter)
+                      end
+                    end
                   end
                 end
               end
@@ -463,6 +504,10 @@ local function collect_parameters(tTestDescription)
           local tParameter = tModule.atParameter[strParameterName]
           if tParameter==nil then
             tLogSystem.fatal('Module %d has no parameter "%s".', uiModuleId, strParameterName)
+            tResult = nil
+            break
+          elseif tParameter.fIsOutput==true then
+            tLogSystem.fatal('The parameter %02d:%s is an output parameter.', uiModuleId, strParameterName)
             tResult = nil
             break
           else
@@ -499,11 +544,21 @@ local function check_parameters(tTestDescription)
       local atParameters = tModule.CFG_aParameterDefinitions
 
       for _, tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
-        -- Validate the parameter.
-        local fValid, strError = tParameter:validate()
-        if fValid==false then
-          tLogSystem.fatal('The parameter %02d:%s is invalid: %s', uiTestIndex, tParameter.strName, strError)
-          fParametersOk = false
+        -- Ignore output parameter. They will be set when the test is executed.
+        if tParameter.fIsOutput==true then
+          tLogSystem.debug('Ignoring output parameter %02d:%s .', uiTestIndex, tParameter.strName)
+
+        -- Ignore also parameters connected to something. They might get their values when the test is executed.
+        elseif tParameter:isConnected()==true then
+          tLogSystem.debug('Ignoring the connected parameter %02d:%s .', uiTestIndex, tParameter.strName)
+
+        else
+          -- Validate the parameter.
+          local fValid, strError = tParameter:validate()
+          if fValid==false then
+            tLogSystem.fatal('The parameter %02d:%s is invalid: %s', uiTestIndex, tParameter.strName, strError)
+            fParametersOk = false
+          end
         end
       end
     end
@@ -538,6 +593,18 @@ local function run_tests()
     -- Get the parameters for the module.
     local atParameters = tModule.CFG_aParameterDefinitions
 
+    -- Validate all input parameters.
+    for _, tParameter in ipairs(atParameters) do
+      if tParameter.fIsOutput~=true then
+        local fValid, strError = tParameter:validate()
+        if fValid==false then
+          tLogSystem.fatal('Failed to validate the parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
+          fTestResult = false
+          break
+        end
+      end
+    end
+
     -- Show all parameters for the test case.
     tLogSystem.info("__/Parameters/________________________________________________________________")
     if pl.tablex.size(atParameters)==0 then
@@ -545,7 +612,10 @@ local function run_tests()
     else
       tLogSystem.info('Parameters for testcase %d (%s):', uiTestCase, strTestCaseName)
       for _, tParameter in pairs(atParameters) do
-        tLogSystem.info('  %02d:%s = %s', uiTestCase, tParameter.strName, tParameter:get_pretty())
+        -- Do not dump output parameter. They have no value yet.
+        if tParameter.fIsOutput~=true then
+          tLogSystem.info('  %02d:%s = %s', uiTestCase, tParameter.strName, tParameter:get_pretty())
+        end
       end
     end
     tLogSystem.info("______________________________________________________________________________")
@@ -564,6 +634,16 @@ local function run_tests()
 
       fTestResult = false
       break
+    end
+
+    -- Validate all output parameters.
+    for _, tParameter in ipairs(atParameters) do
+      if tParameter.fIsOutput==true then
+        local fValid, strError = tParameter:validate()
+        if fValid==false then
+          tLogSystem.warning('Failed to validate the output parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
+        end
+      end
     end
   end
 
