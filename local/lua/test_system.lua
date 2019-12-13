@@ -1,60 +1,55 @@
-module("test_system", package.seeall)
-
-------------------------------------------------------------------------------
-
-
-local strTesterVersion = '${PROJECT_VERSION}'
-local strTesterVcsVersion = '${PROJECT_VERSION_VCS}'
-
--- The "show parameter" mode is disabled by default.
-local fShowParameters = false
-
--- No log file.
-local tLogFile = nil
-
--- Run over all available test cases and get the test modules.
-local atModules = {}
-
--- This list collects all parameters from the CLI. They are not split into their components.
-local astrRawParameters = {}
-
--- This list collects all test cases to run.
-local auiTests = nil
-
--- This is the list of the system parameters.
-local m_atSystemParameter = nil
-
--- This is the filename of the log file.
-local strLogFileName = nil
-
-local pl = require'pl.import_into'()
-local argparse = require 'argparse'
-local TestDescription = require 'test_description'
-
--- This is a log writer connected to all outputs (console and optionally file).
--- It is used to create new log targets with special prefixes for each test.
-local tLogWriter = nil
--- This is the selected log level.
-local strLogLevel = nil
-
--- This is a logger with "SYSTEM" prefix.
-local tLogSystem = nil
-
--- Prepend the default parameter file before all other parameters if no '-P'
--- option was specified.
-local strDefaultParameterFile = 'parameters.txt'
+local class = require 'pl.class'
+local TestSystem = class()
 
 
-------------------------------------------------------------------------------
+function TestSystem:_init()
+  self.strTesterVersion = '${PROJECT_VERSION}'
+  self.strTesterVcsVersion = '${PROJECT_VERSION_VCS}'
+
+  -- Get the LUA version number in the form major * 100 + minor .
+  local strMaj, strMin = string.match(_VERSION, '^Lua (%d+)%.(%d+)$')
+  if strMaj~=nil then
+    self.LUA_VER_NUM = tonumber(strMaj) * 100 + tonumber(strMin)
+  end
+
+  -- The "show parameter" mode is disabled by default.
+  self.fShowParameters = false
+
+  -- Run over all available test cases and get the test modules.
+  self.atModules = {}
+
+  -- This list collects all parameters from the CLI. They are not split into their components.
+  self.astrRawParameters = {}
+
+  -- This list collects all test cases to run.
+  self.auiTests = nil
+
+  -- This is the list of the system parameters.
+  self.m_atSystemParameter = nil
+
+  self.pl = require'pl.import_into'()
+  self.argparse = require 'argparse'
+  self.TestDescription = require 'test_description'
+
+  -- This is a log writer connected to all outputs (console and optionally file).
+  -- It is used to create new log targets with special prefixes for each test.
+  self.tLogWriter = nil
+  -- This is the selected log level.
+  self.strLogLevel = nil
+
+  -- This is a logger with "SYSTEM" prefix.
+  self.tLogSystem = nil
+end
 
 
-local function collect_testcases()
+
+function TestSystem:collect_testcases()
   local tResult = true
 
-  for _, uiTestCase in ipairs(auiTests) do
+  for _, uiTestCase in ipairs(self.auiTests) do
     -- Does a test with this number already exist?
-    if atModules[uiTestCase]~=nil then
-      tLogSystem.fatal('More than one test with the index %d exists.', uiTestCase)
+    if self.atModules[uiTestCase]~=nil then
+      self.tLogSystem.fatal('More than one test with the index %d exists.', uiTestCase)
       tResult = nil
       break
     end
@@ -64,15 +59,15 @@ local function collect_testcases()
 
     -- Load the test case.
     local tClass = require(strTestCaseFilename)
-    local tModule = tClass(uiTestCase, tLogWriter, strLogLevel)
-    atModules[uiTestCase] = tModule
+    local tModule = tClass(uiTestCase, self.tLogWriter, self.strLogLevel)
+    self.atModules[uiTestCase] = tModule
   end
 
   return tResult
 end
 
 
-local function print_aligned(aLines, strFormat)
+function TestSystem:print_aligned(aLines, strFormat)
   -- Get the maximum size of the lines.
   local sizLineMax = 0
   for iCnt,aLine in ipairs(aLines) do
@@ -93,10 +88,10 @@ end
 
 
 
-local function show_all_parameters()
+function TestSystem:show_all_parameters()
   print("All parameters:")
   print("")
-  for uiTestCase,tModule in ipairs(atModules) do
+  for uiTestCase,tModule in ipairs(self.atModules) do
     local strTestName = tModule.CFG_strTestName
     print(string.format("  Test case %02d: '%s'", uiTestCase, strTestName))
 
@@ -116,7 +111,7 @@ local function show_all_parameters()
 
       table.insert(atPrint, { string.format("%s %02d:%s", strInOut, uiTestCase, tParameter.strName), {tParameter.strHelp, strDefault}})
     end
-    print_aligned(atPrint, "    %s  %s")
+    self:print_aligned(atPrint, "    %s  %s")
     print("")
   end
 end
@@ -127,11 +122,11 @@ end
 -- Search a module by its name and return the index.
 -- @param strModuleName The module name to search.
 -- @return The index if the name was found or nil if the name was not found.
-local function get_module_index(strModuleName)
+function TestSystem:get_module_index(strModuleName)
   iResult = nil
 
   -- Loop over all available modules.
-  for iCnt,tModule in ipairs(atModules) do
+  for iCnt,tModule in ipairs(self.atModules) do
     if tModule.CFG_strTestName==strModuleName then
       iResult = iCnt
       break
@@ -143,7 +138,7 @@ end
 
 
 
-local function parse_commandline_arguments()
+function TestSystem:parse_commandline_arguments()
   local atLogLevels = {
     'debug',
     'info',
@@ -152,12 +147,12 @@ local function parse_commandline_arguments()
     'fatal'
   }
 
-  local tParser = argparse('tester', 'A test framework.')
+  local tParser = self.argparse('tester', 'A test framework.')
   -- "--version" is special. It behaves like a command and is processed immediately during parsing.
   tParser:flag('--version')
     :description('Show the version and exit.')
     :action(function()
-      print(string.format('tester V%s %s', strTesterVersion, strTesterVcsVersion))
+      print(string.format('tester V%s %s', self.strTesterVersion, self.strTesterVcsVersion))
       os.exit(0)
     end)
   tParser:argument('testcase', 'Run only testcase INDEX.')
@@ -221,7 +216,7 @@ local function parse_commandline_arguments()
     :argname('<LEVEL>')
     :default('warning')
     :convert(function(strArg)
-      local tIdx = pl.tablex.find(atLogLevels, strArg)
+      local tIdx = self.pl.tablex.find(atLogLevels, strArg)
       if tIdx==nil then
         return nil, string.format('Invalid verbosity level "%s". Possible values are %s.', strArg, table.concat(atLogLevels, ', '))
       else
@@ -234,9 +229,9 @@ local function parse_commandline_arguments()
   local tArgs = tParser:parse()
 
   -- Save the selected log level.
-  strLogLevel = tArgs.strLogLevel
+  self.strLogLevel = tArgs.strLogLevel
 
-  fShowParameters = tArgs.fShowParameters
+  self.fShowParameters = tArgs.fShowParameters
 
   local fUseColor = tArgs.fUseColor
   if fUseColor==nil then
@@ -270,30 +265,34 @@ local function parse_commandline_arguments()
   end
 
   -- Combine all writers.
-  tLogWriter = require 'log.writer.list'.new(unpack(atLogWriters))
+  if self.LUA_VER_NUM==501 then
+    self.tLogWriter = require 'log.writer.list'.new(unpack(atLogWriters))
+  else
+    self.tLogWriter = require 'log.writer.list'.new(table.unpack(atLogWriters))
+  end
 
   -- Create a new log target with "SYSTEM" prefix.
-  local tLogWriterSystem = require 'log.writer.prefix'.new('[System] ', tLogWriter)
-  tLogSystem = require "log".new(
+  local tLogWriterSystem = require 'log.writer.prefix'.new('[System] ', self.tLogWriter)
+  self.tLogSystem = require "log".new(
     -- maximum log level
-    strLogLevel,
+    self.strLogLevel,
     tLogWriterSystem,
     -- Formatter
     require "log.formatter.format".new()
   )
 
 
-  astrRawParameters = tArgs.astrRawParameters
+  self.astrRawParameters = tArgs.astrRawParameters
 
   -- If no test cases were specified run all of them.
   if #tArgs.auiTests~=0 then
-    auiTests = tArgs.auiTests
+    self.auiTests = tArgs.auiTests
   end
 end
 
 
 
-local function process_one_parameter(strParameterLine, atCliParameters)
+function TestSystem:process_one_parameter(strParameterLine, atCliParameters)
   local tResult = true
 
   -- Ignore end of file markers.
@@ -309,15 +308,15 @@ local function process_one_parameter(strParameterLine, atCliParameters)
   elseif string.sub(strParameterLine, 1, 1)=="@" then
     -- Get the filename without the '@'.
     local strFilename = string.sub(strParameterLine, 2)
-    tLogSystem.debug('Processing parameter file "%s".', strFilename)
-    if pl.path.exists(strFilename)==nil then
-      tLogSystem.fatal('The parameter file "%s" does not exist.', strFilename)
+    self.tLogSystem.debug('Processing parameter file "%s".', strFilename)
+    if self.pl.path.exists(strFilename)==nil then
+      self.tLogSystem.fatal('The parameter file "%s" does not exist.', strFilename)
       tResult = nil
     else
       -- Iterate over all lines.
       for strLine in io.lines(strFilename) do
         if strLine~=nil then
-          tResult = process_one_parameter(strLine, atCliParameters)
+          tResult = self:process_one_parameter(strLine, atCliParameters)
           if tResult~=true then
             break
           end
@@ -325,7 +324,7 @@ local function process_one_parameter(strParameterLine, atCliParameters)
       end
     end
   else
-    tLogSystem.debug('Processing parameter "%s".', strParameterLine)
+    self.tLogSystem.debug('Processing parameter "%s".', strParameterLine)
     local uiTestCase
     -- Try to parse the parameter line with a test number ("01:key=value").
     strTestCase, strParameterName, strValue = string.match(strParameterLine, "([0-9]+):([0-9a-zA-Z_]+)=(.*)")
@@ -333,16 +332,16 @@ local function process_one_parameter(strParameterLine, atCliParameters)
       -- Try to parse the parameter line with a test name ("EthernetTest:key=value").
       strTestCase, strParameterName, strValue = string.match(strParameterLine, "([0-9a-zA-Z_]+):([0-9a-zA-Z_]+)=(.*)")
       if strTestCase==nil then
-        tLogSystem.fatal("The parameter definition has an invalid format: '%s'", strParameterLine)
+        self.tLogSystem.fatal("The parameter definition has an invalid format: '%s'", strParameterLine)
         tResult = nil
       else
         if strTestCase=='system' then
           uiTestCase = 0
         else
           -- Get the number for the test case name.
-          uiTestCase = get_module_index(strTestCase)
+          uiTestCase = self:get_module_index(strTestCase)
           if uiTestCase==nil then
-            tLogSystem.fatal('The parameter "%s" uses an unknown test name: "%s".', strParameterLine, strTestCase)
+            self.tLogSystem.fatal('The parameter "%s" uses an unknown test name: "%s".', strParameterLine, strTestCase)
             tResult = nil
           end
         end
@@ -350,7 +349,7 @@ local function process_one_parameter(strParameterLine, atCliParameters)
     else
       uiTestCase = tonumber(strTestCase)
       if uiTestCase==nil then
-        tLogSystem.fatal('The parameter "%s" uses an invalid number for the test index: "%s".', strParameterLine, strTestCase)
+        self.tLogSystem.fatal('The parameter "%s" uses an invalid number for the test index: "%s".', strParameterLine, strTestCase)
         tResult = nil
       end
     end
@@ -365,13 +364,13 @@ end
 
 
 
-local function collect_parameters(tTestDescription)
+function TestSystem:collect_parameters(tTestDescription)
   local tResult = true
 
   -- Collect all parameters from the command line.
   local atCliParameters = {}
-  for _, strParameter in ipairs(astrRawParameters) do
-    tResult = process_one_parameter(strParameter, atCliParameters)
+  for _, strParameter in ipairs(self.astrRawParameters) do
+    tResult = self:process_one_parameter(strParameter, atCliParameters)
     if tResult~=true then
       break
     end
@@ -382,8 +381,8 @@ local function collect_parameters(tTestDescription)
     -- Is this a system parameter?
     if tParam.id==0 then
       -- Set the parameter.
-      tLogSystem.debug('Setting system parameter "%s" to %s.', tParam.name, tParam.value)
-      m_atSystemParameter[tParam.name] = tParam.value
+      self.tLogSystem.debug('Setting system parameter "%s" to %s.', tParam.name, tParam.value)
+      self.m_atSystemParameter[tParam.name] = tParam.value
     end
   end
 
@@ -394,11 +393,11 @@ local function collect_parameters(tTestDescription)
     -- Loop over all active tests and apply the tests from the XML.
     local uiNumberOfTests = tTestDescription:getNumberOfTests()
     for uiTestIndex = 1, uiNumberOfTests do
-      local tModule = atModules[uiTestIndex]
+      local tModule = self.atModules[uiTestIndex]
       local strTestCaseName = astrTestNames[uiTestIndex]
 
       if tModule==nil then
-        tLogSystem.debug('Skipping deactivated test %02d:%s .', uiTestIndex, strTestCaseName)
+        self.tLogSystem.debug('Skipping deactivated test %02d:%s .', uiTestIndex, strTestCaseName)
       else
         -- Get the parameters for the module.
         local atParametersModule = tModule.atParameter or {}
@@ -413,12 +412,12 @@ local function collect_parameters(tTestDescription)
           -- Does the parameter exist?
           tParameter = atParametersModule[strParameterName]
           if tParameter==nil then
-            tLogSystem.fatal('The parameter "%s" does not exist in test case %d (%s).', strParameterName, uiTestIndex, strTestCaseName)
+            self.tLogSystem.fatal('The parameter "%s" does not exist in test case %d (%s).', strParameterName, uiTestIndex, strTestCaseName)
             tResult = nil
             break
           -- Is the parameter an "output"?
           elseif tParameter.fIsOutput==true then
-            tLogSystem.fatal('The parameter "%s" in test case %d (%s) is an output.', strParameterName, uiTestIndex, strTestCaseName)
+            self.tLogSystem.fatal('The parameter "%s" in test case %d (%s) is an output.', strParameterName, uiTestIndex, strTestCaseName)
             tResult = nil
             break
           else
@@ -429,15 +428,15 @@ local function collect_parameters(tTestDescription)
               -- This is a connection to another value or an output parameter.
               local strClass, strName = string.match(strParameterConnection, '^([^:]+):(.+)')
               if strClass==nil then
-                tLogSystem.fatal('Parameter "%s" of test %d has an invalid connection "%s".', strParameterName, uiTestIndex, strParameterConnection)
+                self.tLogSystem.fatal('Parameter "%s" of test %d has an invalid connection "%s".', strParameterName, uiTestIndex, strParameterConnection)
                 tResult = nil
                 break
               else
                 -- Is this a connection to a system parameter?
                 if strClass=='system' then
-                  tValue = m_atSystemParameter[strName]
+                  tValue = self.m_atSystemParameter[strName]
                   if tValue==nil then
-                    tLogSystem.fatal('The connection target "%s" has an unknown name.', strParameterConnection)
+                    self.tLogSystem.fatal('The connection target "%s" has an unknown name.', strParameterConnection)
                     tResult = nil
                     break
                   else
@@ -449,29 +448,29 @@ local function collect_parameters(tTestDescription)
                   local uiConnectionTargetTestCase = tonumber(strClass)
                   if uiConnectionTargetTestCase==nil then
                     -- The class is no number. Search the name.
-                    uiConnectionTargetTestCase = get_module_index(strClass)
+                    uiConnectionTargetTestCase = self:get_module_index(strClass)
                     if uiTestCase==nil then
-                      tLogSystem.fatal('The connection "%s" uses an unknown test name: "%s".', strParameterConnection, strClass)
+                      self.tLogSystem.fatal('The connection "%s" uses an unknown test name: "%s".', strParameterConnection, strClass)
                       tResult = nil
                       break
                     end
                   end
                   if uiConnectionTargetTestCase~=nil then
                     -- Get the target module.
-                    local tTargetModule = atModules[uiConnectionTargetTestCase]
+                    local tTargetModule = self.atModules[uiConnectionTargetTestCase]
                     if tTargetModule==nil then
-                      tLogSystem.info('Ignoring the connection "%s" to an inactive target: "%s".', strParameterConnection, strClass)
+                      self.tLogSystem.info('Ignoring the connection "%s" to an inactive target: "%s".', strParameterConnection, strClass)
                     else
                       -- Get the parameter list of the target module.
                       local atTargetParameters = tTargetModule.atParameter or {}
                       -- Does the target module have a matching parameter?
                       local tTargetParameter = atTargetParameters[strName]
                       if tTargetParameter==nil then
-                        tLogSystem.fatal('The connection "%s" uses a non-existing parameter at the target: "%s".', strParameterConnection, strName)
+                        self.tLogSystem.fatal('The connection "%s" uses a non-existing parameter at the target: "%s".', strParameterConnection, strName)
                         tResult = nil
                         break
                       else
-                        tLogSystem.info('Connecting %02d:%s to %02d:%s .', uiTestIndex, strParameterName, uiConnectionTargetTestCase, tTargetParameter.strName)
+                        self.tLogSystem.info('Connecting %02d:%s to %02d:%s .', uiTestIndex, strParameterName, uiConnectionTargetTestCase, tTargetParameter.strName)
                         tParameter:connect(tTargetParameter)
                       end
                     end
@@ -488,26 +487,26 @@ local function collect_parameters(tTestDescription)
     for _, tParam in pairs(atCliParameters) do
       local uiModuleId = tParam.id
       local strParameterName = tParam.name
-      tLogSystem.debug('Apply CLI parameter for module #%d, "%s"="%s".', uiModuleId, strParameterName, tParam.value)
+      self.tLogSystem.debug('Apply CLI parameter for module #%d, "%s"="%s".', uiModuleId, strParameterName, tParam.value)
 
       -- Get the module.
       local tModule
       -- Do not process system parameters here.
       if uiModuleId~=0 then
-        tModule = atModules[uiModuleId]
+        tModule = self.atModules[uiModuleId]
         if tModule==nil then
-          tLogSystem.fatal('No module with index %d found.', uiModuleId)
+          self.tLogSystem.fatal('No module with index %d found.', uiModuleId)
           tResult = nil
           break
         else
           -- Get the parameter.
           local tParameter = tModule.atParameter[strParameterName]
           if tParameter==nil then
-            tLogSystem.fatal('Module %d has no parameter "%s".', uiModuleId, strParameterName)
+            self.tLogSystem.fatal('Module %d has no parameter "%s".', uiModuleId, strParameterName)
             tResult = nil
             break
           elseif tParameter.fIsOutput==true then
-            tLogSystem.fatal('The parameter %02d:%s is an output parameter.', uiModuleId, strParameterName)
+            self.tLogSystem.fatal('The parameter %02d:%s is an output parameter.', uiModuleId, strParameterName)
             tResult = nil
             break
           else
@@ -524,7 +523,7 @@ end
 
 
 
-local function check_parameters(tTestDescription)
+function TestSystem:check_parameters(tTestDescription)
   -- Check all parameters.
   local fParametersOk = true
 
@@ -534,11 +533,11 @@ local function check_parameters(tTestDescription)
   -- Loop over all active tests.
   local uiNumberOfTests = tTestDescription:getNumberOfTests()
   for uiTestIndex = 1, uiNumberOfTests do
-    local tModule = atModules[uiTestIndex]
+    local tModule = self.atModules[uiTestIndex]
     local strTestCaseName = astrTestNames[uiTestIndex]
 
     if tModule==nil then
-      tLogSystem.debug('Skipping deactivated test %02d:%s .', uiTestIndex, strTestCaseName)
+      self.tLogSystem.debug('Skipping deactivated test %02d:%s .', uiTestIndex, strTestCaseName)
     else
       -- Get the parameters for the module.
       local atParameters = tModule.CFG_aParameterDefinitions
@@ -546,17 +545,17 @@ local function check_parameters(tTestDescription)
       for _, tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
         -- Ignore output parameter. They will be set when the test is executed.
         if tParameter.fIsOutput==true then
-          tLogSystem.debug('Ignoring output parameter %02d:%s .', uiTestIndex, tParameter.strName)
+          self.tLogSystem.debug('Ignoring output parameter %02d:%s .', uiTestIndex, tParameter.strName)
 
         -- Ignore also parameters connected to something. They might get their values when the test is executed.
         elseif tParameter:isConnected()==true then
-          tLogSystem.debug('Ignoring the connected parameter %02d:%s .', uiTestIndex, tParameter.strName)
+          self.tLogSystem.debug('Ignoring the connected parameter %02d:%s .', uiTestIndex, tParameter.strName)
 
         else
           -- Validate the parameter.
           local fValid, strError = tParameter:validate()
           if fValid==false then
-            tLogSystem.fatal('The parameter %02d:%s is invalid: %s', uiTestIndex, tParameter.strName, strError)
+            self.tLogSystem.fatal('The parameter %02d:%s is invalid: %s', uiTestIndex, tParameter.strName, strError)
             fParametersOk = false
           end
         end
@@ -565,7 +564,7 @@ local function check_parameters(tTestDescription)
   end
 
   if fParametersOk==false then
-    tLogSystem.fatal('One or more parameters were invalid. Not running the tests!')
+    self.tLogSystem.fatal('One or more parameters were invalid. Not running the tests!')
   end
 
   return fParametersOk
@@ -573,22 +572,22 @@ end
 
 
 
-local function run_tests()
+function TestSystem:run_tests()
   -- Run all enabled modules with their parameter.
   local fTestResult = true
 
-  for iCnt,uiTestCase in ipairs(auiTests) do
+  for iCnt,uiTestCase in ipairs(self.auiTests) do
     -- Get the module for the test index.
-    tModule = atModules[uiTestCase]
+    tModule = self.atModules[uiTestCase]
     if tModule==nil then
-      tLogSystem.fatal('Test case %02d not found!', uiTestCase)
+      self.tLogSystem.fatal('Test case %02d not found!', uiTestCase)
       fTestResult = false
       break
     end
 
     -- Get the name for the test case index.
     local strTestCaseName = tModule.CFG_strTestName
-    tLogSystem.info('Running testcase %d (%s).', uiTestCase, strTestCaseName)
+    self.tLogSystem.info('Running testcase %d (%s).', uiTestCase, strTestCaseName)
 
     -- Get the parameters for the module.
     local atParameters = tModule.CFG_aParameterDefinitions
@@ -598,7 +597,7 @@ local function run_tests()
       if tParameter.fIsOutput~=true then
         local fValid, strError = tParameter:validate()
         if fValid==false then
-          tLogSystem.fatal('Failed to validate the parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
+          self.tLogSystem.fatal('Failed to validate the parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
           fTestResult = false
           break
         end
@@ -606,23 +605,23 @@ local function run_tests()
     end
 
     -- Show all parameters for the test case.
-    tLogSystem.info("__/Parameters/________________________________________________________________")
-    if pl.tablex.size(atParameters)==0 then
-      tLogSystem.info('Testcase %d (%s) has no parameter.', uiTestCase, strTestCaseName)
+    self.tLogSystem.info("__/Parameters/________________________________________________________________")
+    if self.pl.tablex.size(atParameters)==0 then
+      self.tLogSystem.info('Testcase %d (%s) has no parameter.', uiTestCase, strTestCaseName)
     else
-      tLogSystem.info('Parameters for testcase %d (%s):', uiTestCase, strTestCaseName)
+      self.tLogSystem.info('Parameters for testcase %d (%s):', uiTestCase, strTestCaseName)
       for _, tParameter in pairs(atParameters) do
         -- Do not dump output parameter. They have no value yet.
         if tParameter.fIsOutput~=true then
-          tLogSystem.info('  %02d:%s = %s', uiTestCase, tParameter.strName, tParameter:get_pretty())
+          self.tLogSystem.info('  %02d:%s = %s', uiTestCase, tParameter.strName, tParameter:get_pretty())
         end
       end
     end
-    tLogSystem.info("______________________________________________________________________________")
+    self.tLogSystem.info("______________________________________________________________________________")
 
     -- Execute the test code. Write a stack trace to the debug logger if the test case crashes.
-    fStatus, tResult = xpcall(function() tModule:run() end, function(tErr) tLogSystem.debug(debug.traceback()) return tErr end)
-    tLogSystem.info('Testcase %d (%s) finished.', uiTestCase, strTestCaseName)
+    fStatus, tResult = xpcall(function() tModule:run() end, function(tErr) self.tLogSystem.debug(debug.traceback()) return tErr end)
+    self.tLogSystem.info('Testcase %d (%s) finished.', uiTestCase, strTestCaseName)
     if not fStatus then
       local strError
       if tResult~=nil then
@@ -630,7 +629,7 @@ local function run_tests()
       else
         strError = 'No error message.'
       end
-      tLogSystem.error('Error running the test: %s', strError)
+      self.tLogSystem.error('Error running the test: %s', strError)
 
       fTestResult = false
       break
@@ -641,7 +640,7 @@ local function run_tests()
       if tParameter.fIsOutput==true then
         local fValid, strError = tParameter:validate()
         if fValid==false then
-          tLogSystem.warning('Failed to validate the output parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
+          self.tLogSystem.warning('Failed to validate the output parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
         end
       end
     end
@@ -652,45 +651,45 @@ local function run_tests()
 
   -- Print the result in huge letters.
   if fTestResult==true then
-    tLogSystem.info('***************************************')
-    tLogSystem.info('*                                     *')
-    tLogSystem.info('* ######## ########  ######  ######## *')
-    tLogSystem.info('*    ##    ##       ##    ##    ##    *')
-    tLogSystem.info('*    ##    ##       ##          ##    *')
-    tLogSystem.info('*    ##    ######    ######     ##    *')
-    tLogSystem.info('*    ##    ##             ##    ##    *')
-    tLogSystem.info('*    ##    ##       ##    ##    ##    *')
-    tLogSystem.info('*    ##    ########  ######     ##    *')
-    tLogSystem.info('*                                     *')
-    tLogSystem.info('*          #######  ##    ##          *')
-    tLogSystem.info('*         ##     ## ##   ##           *')
-    tLogSystem.info('*         ##     ## ##  ##            *')
-    tLogSystem.info('*         ##     ## #####             *')
-    tLogSystem.info('*         ##     ## ##  ##            *')
-    tLogSystem.info('*         ##     ## ##   ##           *')
-    tLogSystem.info('*          #######  ##    ##          *')
-    tLogSystem.info('*                                     *')
-    tLogSystem.info('***************************************')
+    self.tLogSystem.info('***************************************')
+    self.tLogSystem.info('*                                     *')
+    self.tLogSystem.info('* ######## ########  ######  ######## *')
+    self.tLogSystem.info('*    ##    ##       ##    ##    ##    *')
+    self.tLogSystem.info('*    ##    ##       ##          ##    *')
+    self.tLogSystem.info('*    ##    ######    ######     ##    *')
+    self.tLogSystem.info('*    ##    ##             ##    ##    *')
+    self.tLogSystem.info('*    ##    ##       ##    ##    ##    *')
+    self.tLogSystem.info('*    ##    ########  ######     ##    *')
+    self.tLogSystem.info('*                                     *')
+    self.tLogSystem.info('*          #######  ##    ##          *')
+    self.tLogSystem.info('*         ##     ## ##   ##           *')
+    self.tLogSystem.info('*         ##     ## ##  ##            *')
+    self.tLogSystem.info('*         ##     ## #####             *')
+    self.tLogSystem.info('*         ##     ## ##  ##            *')
+    self.tLogSystem.info('*         ##     ## ##   ##           *')
+    self.tLogSystem.info('*          #######  ##    ##          *')
+    self.tLogSystem.info('*                                     *')
+    self.tLogSystem.info('***************************************')
   else
-    tLogSystem.error('*******************************************************')
-    tLogSystem.error('*                                                     *')
-    tLogSystem.error('*         ######## ########  ######  ########         *')
-    tLogSystem.error('*            ##    ##       ##    ##    ##            *')
-    tLogSystem.error('*            ##    ##       ##          ##            *')
-    tLogSystem.error('*            ##    ######    ######     ##            *')
-    tLogSystem.error('*            ##    ##             ##    ##            *')
-    tLogSystem.error('*            ##    ##       ##    ##    ##            *')
-    tLogSystem.error('*            ##    ########  ######     ##            *')
-    tLogSystem.error('*                                                     *')
-    tLogSystem.error('* ########    ###    #### ##       ######## ########  *')
-    tLogSystem.error('* ##         ## ##    ##  ##       ##       ##     ## *')
-    tLogSystem.error('* ##        ##   ##   ##  ##       ##       ##     ## *')
-    tLogSystem.error('* ######   ##     ##  ##  ##       ######   ##     ## *')
-    tLogSystem.error('* ##       #########  ##  ##       ##       ##     ## *')
-    tLogSystem.error('* ##       ##     ##  ##  ##       ##       ##     ## *')
-    tLogSystem.error('* ##       ##     ## #### ######## ######## ########  *')
-    tLogSystem.error('*                                                     *')
-    tLogSystem.error('*******************************************************')
+    self.tLogSystem.error('*******************************************************')
+    self.tLogSystem.error('*                                                     *')
+    self.tLogSystem.error('*         ######## ########  ######  ########         *')
+    self.tLogSystem.error('*            ##    ##       ##    ##    ##            *')
+    self.tLogSystem.error('*            ##    ##       ##          ##            *')
+    self.tLogSystem.error('*            ##    ######    ######     ##            *')
+    self.tLogSystem.error('*            ##    ##             ##    ##            *')
+    self.tLogSystem.error('*            ##    ##       ##    ##    ##            *')
+    self.tLogSystem.error('*            ##    ########  ######     ##            *')
+    self.tLogSystem.error('*                                                     *')
+    self.tLogSystem.error('* ########    ###    #### ##       ######## ########  *')
+    self.tLogSystem.error('* ##         ## ##    ##  ##       ##       ##     ## *')
+    self.tLogSystem.error('* ##        ##   ##   ##  ##       ##       ##     ## *')
+    self.tLogSystem.error('* ######   ##     ##  ##  ##       ######   ##     ## *')
+    self.tLogSystem.error('* ##       #########  ##  ##       ##       ##     ## *')
+    self.tLogSystem.error('* ##       ##     ##  ##  ##       ##       ##     ## *')
+    self.tLogSystem.error('* ##       ##     ## #### ######## ######## ########  *')
+    self.tLogSystem.error('*                                                     *')
+    self.tLogSystem.error('*******************************************************')
   end
 
   return fTestResult
@@ -698,32 +697,32 @@ end
 
 
 
-function run()
-  parse_commandline_arguments()
+function TestSystem:run()
+  self:parse_commandline_arguments()
 
   -- Store the system parameters here.
-  m_atSystemParameter = {}
+  self.m_atSystemParameter = {}
 
   -- Read the test.xml file.
-  local tTestDescription = TestDescription(tLogSystem)
+  local tTestDescription = self.TestDescription(self.tLogSystem)
   local tResult = tTestDescription:parse('tests.xml')
   if tResult~=true then
-    tLogSystem.error('Failed to parse the test description.')
+    self.tLogSystem.error('Failed to parse the test description.')
   else
     -- Run all tests if no test numbers were specified on the command line.
     local uiTestCases = tTestDescription:getNumberOfTests()
-    if auiTests==nil then
+    if self.auiTests==nil then
       -- Run all tests.
-      auiTests = {}
+      self.auiTests = {}
       for uiCnt=1, uiTestCases do
-        table.insert(auiTests, uiCnt)
+        table.insert(self.auiTests, uiCnt)
       end
     else
       -- Check if the selection does not exceed the number of tests.
       local fOk = true
-      for _, uiTestIndex in ipairs(auiTests) do
+      for _, uiTestIndex in ipairs(self.auiTests) do
         if uiTestIndex>uiTestCases then
-          tLogSystem.error('The selected test %d exceeds the number of total tests.', uiTestIndex)
+          self.tLogSystem.error('The selected test %d exceeds the number of total tests.', uiTestIndex)
           fOk = false
         end
       end
@@ -734,18 +733,18 @@ function run()
 
     -- Create the global tester.
     local cTester = require 'tester_cli'
-    _G.tester = cTester(tLogSystem)
+    _G.tester = cTester(self.tLogSystem)
 
-    tResult = collect_testcases()
+    tResult = self:collect_testcases()
     if tResult==true then
-      if fShowParameters==true then
-        show_all_parameters()
+      if self.fShowParameters==true then
+        self:show_all_parameters()
       else
-        tResult = collect_parameters(tTestDescription)
+        tResult = self:collect_parameters(tTestDescription)
         if tResult==true then
-          tResult = check_parameters(tTestDescription)
+          tResult = self:check_parameters(tTestDescription)
           if tResult==true then
-            tResult = run_tests()
+            tResult = self:run_tests()
           end
         end
       end
@@ -756,3 +755,4 @@ function run()
 end
 
 
+return TestSystem
