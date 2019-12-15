@@ -97,10 +97,10 @@ tArcList0.AddFiles('lua/',
 	tTestSystemLua)
 
 tArcList0.AddFiles('wrapper/linux/',
-	'wrapper/linux/tester')
+	'local/wrapper/lua5.1/linux/tester')
 
 tArcList0.AddFiles('wrapper/windows/',
-	'wrapper/windows/tester.bat')
+	'local/wrapper/lua5.1/windows/tester.bat')
 
 tArtifact0 = atEnv.DEFAULT.Archive(os.path.join(strModulePath, '%s-%s.zip' % (strArtifact0, PROJECT_VERSION)), None, ARCHIVE_CONTENTS = tArcList0)
 tArtifact0Hash = atEnv.DEFAULT.Hash('%s.hash' % tArtifact0[0].get_path(), tArtifact0[0].get_path(), HASH_ALGORITHM='md5,sha1,sha224,sha256,sha384,sha512', HASH_TEMPLATE='${ID_UC}:${HASH}\n')
@@ -125,10 +125,10 @@ tArcList1.AddFiles('lua/',
 	tTestSystemLua)
 
 tArcList1.AddFiles('wrapper/linux/',
-	'wrapper/linux/tester')
+	'local/wrapper/lua5.4/linux/tester')
 
 tArcList1.AddFiles('wrapper/windows/',
-	'wrapper/windows/tester.bat')
+	'local/wrapper/lua5.4/windows/tester.bat')
 
 tArtifact1 = atEnv.DEFAULT.Archive(os.path.join(strModulePath, '%s-%s.zip' % (strArtifact1, PROJECT_VERSION)), None, ARCHIVE_CONTENTS = tArcList1)
 tArtifact1Hash = atEnv.DEFAULT.Hash('%s.hash' % tArtifact1[0].get_path(), tArtifact1[0].get_path(), HASH_ALGORITHM='md5,sha1,sha224,sha256,sha384,sha512', HASH_TEMPLATE='${ID_UC}:${HASH}\n')
