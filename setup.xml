@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="mbs/setup2html.xsl"?>
 
-<muhkuh_buildsystem project="org.muhkuh.tests.spi_flash">
+<muhkuh_buildsystem project="org.muhkuh.tools-muhkuh_tester_cli">
 	<project_version>1.3.0</project_version>
 
 	<scons>
