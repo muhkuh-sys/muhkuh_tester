@@ -573,6 +573,8 @@ end
 
 
 function TestSystem:run_tests()
+  local tLogSystem = self.tLogSystem
+
   -- Run all enabled modules with their parameter.
   local fTestResult = true
 
@@ -580,14 +582,14 @@ function TestSystem:run_tests()
     -- Get the module for the test index.
     tModule = self.atModules[uiTestCase]
     if tModule==nil then
-      self.tLogSystem.fatal('Test case %02d not found!', uiTestCase)
+      tLogSystem.fatal('Test case %02d not found!', uiTestCase)
       fTestResult = false
       break
     end
 
     -- Get the name for the test case index.
     local strTestCaseName = tModule.CFG_strTestName
-    self.tLogSystem.info('Running testcase %d (%s).', uiTestCase, strTestCaseName)
+    tLogSystem.info('Running testcase %d (%s).', uiTestCase, strTestCaseName)
 
     -- Get the parameters for the module.
     local atParameters = tModule.CFG_aParameterDefinitions
@@ -597,7 +599,7 @@ function TestSystem:run_tests()
       if tParameter.fIsOutput~=true then
         local fValid, strError = tParameter:validate()
         if fValid==false then
-          self.tLogSystem.fatal('Failed to validate the parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
+          tLogSystem.fatal('Failed to validate the parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
           fTestResult = false
           break
         end
@@ -605,23 +607,23 @@ function TestSystem:run_tests()
     end
 
     -- Show all parameters for the test case.
-    self.tLogSystem.info("__/Parameters/________________________________________________________________")
+    tLogSystem.info("__/Parameters/________________________________________________________________")
     if self.pl.tablex.size(atParameters)==0 then
-      self.tLogSystem.info('Testcase %d (%s) has no parameter.', uiTestCase, strTestCaseName)
+      tLogSystem.info('Testcase %d (%s) has no parameter.', uiTestCase, strTestCaseName)
     else
-      self.tLogSystem.info('Parameters for testcase %d (%s):', uiTestCase, strTestCaseName)
+      tLogSystem.info('Parameters for testcase %d (%s):', uiTestCase, strTestCaseName)
       for _, tParameter in pairs(atParameters) do
         -- Do not dump output parameter. They have no value yet.
         if tParameter.fIsOutput~=true then
-          self.tLogSystem.info('  %02d:%s = %s', uiTestCase, tParameter.strName, tParameter:get_pretty())
+          tLogSystem.info('  %02d:%s = %s', uiTestCase, tParameter.strName, tParameter:get_pretty())
         end
       end
     end
-    self.tLogSystem.info("______________________________________________________________________________")
+    tLogSystem.info("______________________________________________________________________________")
 
     -- Execute the test code. Write a stack trace to the debug logger if the test case crashes.
-    fStatus, tResult = xpcall(function() tModule:run() end, function(tErr) self.tLogSystem.debug(debug.traceback()) return tErr end)
-    self.tLogSystem.info('Testcase %d (%s) finished.', uiTestCase, strTestCaseName)
+    fStatus, tResult = xpcall(function() tModule:run() end, function(tErr) tLogSystem.debug(debug.traceback()) return tErr end)
+    tLogSystem.info('Testcase %d (%s) finished.', uiTestCase, strTestCaseName)
     if not fStatus then
       local strError
       if tResult~=nil then
@@ -629,7 +631,7 @@ function TestSystem:run_tests()
       else
         strError = 'No error message.'
       end
-      self.tLogSystem.error('Error running the test: %s', strError)
+      tLogSystem.error('Error running the test: %s', strError)
 
       fTestResult = false
       break
@@ -640,7 +642,7 @@ function TestSystem:run_tests()
       if tParameter.fIsOutput==true then
         local fValid, strError = tParameter:validate()
         if fValid==false then
-          self.tLogSystem.warning('Failed to validate the output parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
+          tLogSystem.warning('Failed to validate the output parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
         end
       end
     end
@@ -651,45 +653,45 @@ function TestSystem:run_tests()
 
   -- Print the result in huge letters.
   if fTestResult==true then
-    self.tLogSystem.info('***************************************')
-    self.tLogSystem.info('*                                     *')
-    self.tLogSystem.info('* ######## ########  ######  ######## *')
-    self.tLogSystem.info('*    ##    ##       ##    ##    ##    *')
-    self.tLogSystem.info('*    ##    ##       ##          ##    *')
-    self.tLogSystem.info('*    ##    ######    ######     ##    *')
-    self.tLogSystem.info('*    ##    ##             ##    ##    *')
-    self.tLogSystem.info('*    ##    ##       ##    ##    ##    *')
-    self.tLogSystem.info('*    ##    ########  ######     ##    *')
-    self.tLogSystem.info('*                                     *')
-    self.tLogSystem.info('*          #######  ##    ##          *')
-    self.tLogSystem.info('*         ##     ## ##   ##           *')
-    self.tLogSystem.info('*         ##     ## ##  ##            *')
-    self.tLogSystem.info('*         ##     ## #####             *')
-    self.tLogSystem.info('*         ##     ## ##  ##            *')
-    self.tLogSystem.info('*         ##     ## ##   ##           *')
-    self.tLogSystem.info('*          #######  ##    ##          *')
-    self.tLogSystem.info('*                                     *')
-    self.tLogSystem.info('***************************************')
+    tLogSystem.info('***************************************')
+    tLogSystem.info('*                                     *')
+    tLogSystem.info('* ######## ########  ######  ######## *')
+    tLogSystem.info('*    ##    ##       ##    ##    ##    *')
+    tLogSystem.info('*    ##    ##       ##          ##    *')
+    tLogSystem.info('*    ##    ######    ######     ##    *')
+    tLogSystem.info('*    ##    ##             ##    ##    *')
+    tLogSystem.info('*    ##    ##       ##    ##    ##    *')
+    tLogSystem.info('*    ##    ########  ######     ##    *')
+    tLogSystem.info('*                                     *')
+    tLogSystem.info('*          #######  ##    ##          *')
+    tLogSystem.info('*         ##     ## ##   ##           *')
+    tLogSystem.info('*         ##     ## ##  ##            *')
+    tLogSystem.info('*         ##     ## #####             *')
+    tLogSystem.info('*         ##     ## ##  ##            *')
+    tLogSystem.info('*         ##     ## ##   ##           *')
+    tLogSystem.info('*          #######  ##    ##          *')
+    tLogSystem.info('*                                     *')
+    tLogSystem.info('***************************************')
   else
-    self.tLogSystem.error('*******************************************************')
-    self.tLogSystem.error('*                                                     *')
-    self.tLogSystem.error('*         ######## ########  ######  ########         *')
-    self.tLogSystem.error('*            ##    ##       ##    ##    ##            *')
-    self.tLogSystem.error('*            ##    ##       ##          ##            *')
-    self.tLogSystem.error('*            ##    ######    ######     ##            *')
-    self.tLogSystem.error('*            ##    ##             ##    ##            *')
-    self.tLogSystem.error('*            ##    ##       ##    ##    ##            *')
-    self.tLogSystem.error('*            ##    ########  ######     ##            *')
-    self.tLogSystem.error('*                                                     *')
-    self.tLogSystem.error('* ########    ###    #### ##       ######## ########  *')
-    self.tLogSystem.error('* ##         ## ##    ##  ##       ##       ##     ## *')
-    self.tLogSystem.error('* ##        ##   ##   ##  ##       ##       ##     ## *')
-    self.tLogSystem.error('* ######   ##     ##  ##  ##       ######   ##     ## *')
-    self.tLogSystem.error('* ##       #########  ##  ##       ##       ##     ## *')
-    self.tLogSystem.error('* ##       ##     ##  ##  ##       ##       ##     ## *')
-    self.tLogSystem.error('* ##       ##     ## #### ######## ######## ########  *')
-    self.tLogSystem.error('*                                                     *')
-    self.tLogSystem.error('*******************************************************')
+    tLogSystem.error('*******************************************************')
+    tLogSystem.error('*                                                     *')
+    tLogSystem.error('*         ######## ########  ######  ########         *')
+    tLogSystem.error('*            ##    ##       ##    ##    ##            *')
+    tLogSystem.error('*            ##    ##       ##          ##            *')
+    tLogSystem.error('*            ##    ######    ######     ##            *')
+    tLogSystem.error('*            ##    ##             ##    ##            *')
+    tLogSystem.error('*            ##    ##       ##    ##    ##            *')
+    tLogSystem.error('*            ##    ########  ######     ##            *')
+    tLogSystem.error('*                                                     *')
+    tLogSystem.error('* ########    ###    #### ##       ######## ########  *')
+    tLogSystem.error('* ##         ## ##    ##  ##       ##       ##     ## *')
+    tLogSystem.error('* ##        ##   ##   ##  ##       ##       ##     ## *')
+    tLogSystem.error('* ######   ##     ##  ##  ##       ######   ##     ## *')
+    tLogSystem.error('* ##       #########  ##  ##       ##       ##     ## *')
+    tLogSystem.error('* ##       ##     ##  ##  ##       ##       ##     ## *')
+    tLogSystem.error('* ##       ##     ## #### ######## ######## ########  *')
+    tLogSystem.error('*                                                     *')
+    tLogSystem.error('*******************************************************')
   end
 
   return fTestResult
@@ -698,16 +700,18 @@ end
 
 
 function TestSystem:run()
+  local tLogSystem = self.tLogSystem
+
   self:parse_commandline_arguments()
 
   -- Store the system parameters here.
   self.m_atSystemParameter = {}
 
   -- Read the test.xml file.
-  local tTestDescription = self.TestDescription(self.tLogSystem)
+  local tTestDescription = self.TestDescription(tLogSystem)
   local tResult = tTestDescription:parse('tests.xml')
   if tResult~=true then
-    self.tLogSystem.error('Failed to parse the test description.')
+    tLogSystem.error('Failed to parse the test description.')
   else
     -- Run all tests if no test numbers were specified on the command line.
     local uiTestCases = tTestDescription:getNumberOfTests()
@@ -722,7 +726,7 @@ function TestSystem:run()
       local fOk = true
       for _, uiTestIndex in ipairs(self.auiTests) do
         if uiTestIndex>uiTestCases then
-          self.tLogSystem.error('The selected test %d exceeds the number of total tests.', uiTestIndex)
+          tLogSystem.error('The selected test %d exceeds the number of total tests.', uiTestIndex)
           fOk = false
         end
       end
@@ -733,7 +737,7 @@ function TestSystem:run()
 
     -- Create the global tester.
     local cTester = require 'tester_cli'
-    _G.tester = cTester(self.tLogSystem)
+    _G.tester = cTester(tLogSystem)
 
     tResult = self:collect_testcases()
     if tResult==true then
