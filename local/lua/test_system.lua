@@ -702,9 +702,8 @@ end
 
 
 function TestSystem:run()
-  local tLogSystem = self.tLogSystem
-
   self:parse_commandline_arguments()
+  local tLogSystem = self.tLogSystem
 
   -- Store the system parameters here.
   self.m_atSystemParameter = {}
