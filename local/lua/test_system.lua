@@ -623,8 +623,9 @@ function TestSystem:run_tests()
 
     -- Execute the test code. Write a stack trace to the debug logger if the test case crashes.
     fStatus, tResult = xpcall(function() tModule:run() end, function(tErr) tLogSystem.debug(debug.traceback()) return tErr end)
-    tLogSystem.info('Testcase %d (%s) finished.', uiTestCase, strTestCaseName)
+    local strTestResult = 'SUCCESS'
     if not fStatus then
+      strTestResult = 'ERROR'
       local strError
       if tResult~=nil then
         strError = tostring(tResult)
@@ -636,6 +637,7 @@ function TestSystem:run_tests()
       fTestResult = false
       break
     end
+    tLogSystem.info('Testcase %d (%s) finished with result %s.', uiTestCase, strTestCaseName, strTestResult)
 
     -- Validate all output parameters.
     for _, tParameter in ipairs(atParameters) do
