@@ -104,9 +104,8 @@ function TestSystem:show_all_parameters()
         strInOut = 'OUT'
       end
 
-      if tParameter.fHasDefaultValue~=true then
-        strDefault = "no default value"
-      else
+      local strDefault = "no default value"
+      if tParameter.fHasDefaultValue==true then
         strDefault = string.format("default: %s", tostring(tParameter.tDefaultValue))
       end
 
@@ -124,7 +123,7 @@ end
 -- @param strModuleName The module name to search.
 -- @return The index if the name was found or nil if the name was not found.
 function TestSystem:get_module_index(strModuleName)
-  iResult = nil
+  local iResult = nil
 
   -- Loop over all available modules.
   for iCnt,tModule in ipairs(self.atModules) do
@@ -328,7 +327,7 @@ function TestSystem:process_one_parameter(strParameterLine, atCliParameters)
     self.tLogSystem.debug('Processing parameter "%s".', strParameterLine)
     local uiTestCase
     -- Try to parse the parameter line with a test number ("01:key=value").
-    strTestCase, strParameterName, strValue = string.match(strParameterLine, "([0-9]+):([0-9a-zA-Z_]+)=(.*)")
+    local strTestCase, strParameterName, strValue = string.match(strParameterLine, "([0-9]+):([0-9a-zA-Z_]+)=(.*)")
     if strTestCase==nil then
       -- Try to parse the parameter line with a test name ("EthernetTest:key=value").
       strTestCase, strParameterName, strValue = string.match(strParameterLine, "([0-9a-zA-Z_]+):([0-9a-zA-Z_]+)=(.*)")
@@ -435,7 +434,7 @@ function TestSystem:collect_parameters(tTestDescription)
               else
                 -- Is this a connection to a system parameter?
                 if strClass=='system' then
-                  tValue = self.m_atSystemParameter[strName]
+                  local tValue = self.m_atSystemParameter[strName]
                   if tValue==nil then
                     self.tLogSystem.fatal('The connection target "%s" has an unknown name.', strParameterConnection)
                     tResult = nil
@@ -581,7 +580,7 @@ function TestSystem:run_tests()
 
   for _, uiTestCase in ipairs(self.auiTests) do
     -- Get the module for the test index.
-    tModule = self.atModules[uiTestCase]
+    local tModule = self.atModules[uiTestCase]
     if tModule==nil then
       tLogSystem.fatal('Test case %02d not found!', uiTestCase)
       fTestResult = false
@@ -623,7 +622,7 @@ function TestSystem:run_tests()
     tLogSystem.info("______________________________________________________________________________")
 
     -- Execute the test code. Write a stack trace to the debug logger if the test case crashes.
-    fStatus, tResult = xpcall(function() tModule:run() end, function(tErr) tLogSystem.debug(debug.traceback()) return tErr end)
+    local fStatus, tResult = xpcall(function() tModule:run() end, function(tErr) tLogSystem.debug(debug.traceback()) return tErr end)
     local strTestResult = 'SUCCESS'
     if not fStatus then
       strTestResult = 'ERROR'
