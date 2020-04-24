@@ -71,13 +71,13 @@ end
 function TestSystem:print_aligned(aLines, strFormat)
   -- Get the maximum size of the lines.
   local sizLineMax = 0
-  for iCnt,aLine in ipairs(aLines) do
+  for _, aLine in ipairs(aLines) do
     local sizLine = string.len(aLine[1])
     sizLineMax = math.max(sizLineMax, sizLine)
   end
 
   -- Print all strings with the appropriate fillup.
-  for iCnt,aLine in ipairs(aLines) do
+  for _, aLine in ipairs(aLines) do
     local sizFillup = sizLineMax - string.len(aLine[1])
     local astrTexts = aLine[2]
     print(string.format(strFormat, aLine[1] .. string.rep(" ", sizFillup), astrTexts[1]))
@@ -97,7 +97,7 @@ function TestSystem:show_all_parameters()
     print(string.format("  Test case %02d: '%s'", uiTestCase, strTestName))
 
     local atPrint = {}
-    for iCnt1,tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
+    for _, tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
       -- Is this parameter an input or an output?
       local strInOut = 'IN '
       if tParameter.fIsOutput==true then
@@ -579,7 +579,7 @@ function TestSystem:run_tests()
   -- Run all enabled modules with their parameter.
   local fTestResult = true
 
-  for iCnt,uiTestCase in ipairs(self.auiTests) do
+  for _, uiTestCase in ipairs(self.auiTests) do
     -- Get the module for the test index.
     tModule = self.atModules[uiTestCase]
     if tModule==nil then
