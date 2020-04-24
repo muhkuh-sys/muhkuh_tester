@@ -883,7 +883,7 @@ function TestSystem:run()
     end
   end
 
-  return fResult
+  return tResult
 end
 
 
