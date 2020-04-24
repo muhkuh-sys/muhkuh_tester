@@ -449,7 +449,7 @@ function TestSystem:collect_parameters(tTestDescription)
                   if uiConnectionTargetTestCase==nil then
                     -- The class is no number. Search the name.
                     uiConnectionTargetTestCase = self:get_module_index(strClass)
-                    if uiTestCase==nil then
+                    if uiConnectionTargetTestCase==nil then
                       self.tLogSystem.fatal('The connection "%s" uses an unknown test name: "%s".', strParameterConnection, strClass)
                       tResult = nil
                       break
