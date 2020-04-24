@@ -29,6 +29,7 @@ function TestSystem:_init()
 
   self.pl = require'pl.import_into'()
   self.argparse = require 'argparse'
+  self.mhash = require 'mhash'
   self.TestDescription = require 'test_description'
 
   -- This is a log writer connected to all outputs (console and optionally file).
@@ -701,12 +702,141 @@ end
 
 
 
+function TestSystem:showPackageInformation()
+  local tLog = self.tLogSystem
+  local pl = self.pl
+
+  -- Try to read the "package.txt" file.
+  local strPackageInfoFile = pl.path.join('.jonchki', 'package.txt')
+  if pl.path.isfile(strPackageInfoFile)~=true then
+    tLog.warning('No version information available. The package file "%s" does not exist.', strPackageInfoFile)
+  else
+    tLog.debug('Reading the package file "%s".', strPackageInfoFile)
+    local tPackageInfo, strError = pl.config.read(strPackageInfoFile)
+    if tPackageInfo==nil then
+      tLog.warning('No version information available. The package file "%s" is invalid: %s', strPackageInfoFile)
+    else
+      -- Check for the required fields.
+      local astrRequiredFields = {
+        'PACKAGE_NAME',
+        'PACKAGE_VERSION',
+        'PACKAGE_VCS_ID',
+        'HOST_DISTRIBUTION_ID',
+        'HOST_DISTRIBUTION_VERSION',
+        'HOST_CPU_ARCHITECTURE'
+      }
+      local fAllRequiredFieldsOk = true
+      for _, strKey in ipairs(astrRequiredFields) do
+        if tPackageInfo[strKey]==nil then
+          tLog.warning('The required field "%s" is missing in the package info file!', strKey)
+          fAllRequiredFieldsOk = false
+        end
+      end
+      if fAllRequiredFieldsOk~=true then
+        tLog.warning('No version information available. Some required fields are missing in the package info file "%s".', strPackageInfoFile)
+      else
+        tLog.info('Package info:')
+        tLog.info('  Package name:              %s', tPackageInfo['PACKAGE_NAME'])
+        tLog.info('  Package version:           %s', tPackageInfo['PACKAGE_VERSION'])
+        tLog.info('  Package VCS ID:            %s', tPackageInfo['PACKAGE_VCS_ID'])
+        tLog.info('  Host distribution ID:      %s', tPackageInfo['HOST_DISTRIBUTION_ID'])
+        tLog.info('  Host distribution version: %s', tPackageInfo['HOST_DISTRIBUTION_VERSION'])
+        tLog.info('  Host CPU architecture:     %s', tPackageInfo['HOST_CPU_ARCHITECTURE'])
+      end
+    end
+  end
+end
+
+
+
+function TestSystem:checkIntegrity()
+  local tLog = self.tLogSystem
+  local mhash = self.mhash
+  local pl = self.pl
+
+  -- Try to check the package integrity.
+  local fIntegrityOk = true
+  local tHashID = mhash.MHASH_SHA384
+  local strPackageHashFile = pl.path.join('.jonchki', 'package.sha384')
+  if pl.path.isfile(strPackageHashFile)~=true then
+    tLog.warning('No integrity check possible. The package file "%s" does not exist.', strPackageHashFile)
+    fIntegrityOk = false
+  else
+    tLog.debug('Reading the package hash file "%s".', strPackageHashFile)
+    local astrPackageHash, strError = self.pl.utils.readlines(strPackageHashFile)
+    if astrPackageHash==nil then
+      tLog.warning('No integrity check possible. Failed to read the file "%s": %s', strPackageHashFile, strError)
+      fIntegrityOk = false
+    else
+      local uiExpectedHashStringSize = mhash.get_block_size(tHashID) * 2
+
+      -- Loop over all lines and interpret them as hash sums.
+      for uiLine, strHashLine in ipairs(astrPackageHash) do
+        local strHashExpected, strFile = string.match(strHashLine, '([0-9a-fA-F]+)%s+%*?(.+)')
+        if strHashExpected==nil then
+          tLog.warning('Integrity error: invalid line %d in file "%s"', uiLine, strPackageHashFile)
+          fIntegrityOk = false
+        elseif string.len(strHashExpected)~=uiExpectedHashStringSize then
+          tLog.warning('Integrity error: invalid hash size in line %d of file "%s"', uiLine, strPackageHashFile)
+          fIntegrityOk = false
+        elseif pl.path.isfile(strFile)~=true then
+          tLog.warning('Integrity error: the file "%s" does not exist.', strFile)
+          fIntegrityOk = false
+        else
+          tLog.debug('Hashing file "%s"...', strFile)
+          -- Create a new hash state.
+          local tState = mhash.mhash_state()
+          tState:init(tHashID)
+          -- Try to open the file.
+          local tFile, strError = io.open(strFile, 'rb')
+          if tFile==nil then
+            tLog.warning('Integrity error: failed to open the file "%s": %s', strFile, strError)
+            fIntegrityOk = false
+          else
+            -- Loop over the complete file and hash the data in chunks.
+            repeat
+              local strData = tFile:read(16384)
+              if strData~=nil then
+                tState:hash(strData)
+              end
+            until strData==nil
+            local strHashBin = tState:hash_end()
+            -- Convert the binary hash to a hex dump.
+            local aHashHex = {}
+            for iCnt=1,string.len(strHashBin) do
+              table.insert(aHashHex, string.format("%02x", string.byte(strHashBin, iCnt)))
+            end
+            local strHashOfFile = table.concat(aHashHex)
+            -- Compare the hash of the file and the expected hash.
+            if strHashOfFile~=strHashExpected then
+              tLog.warning('Integrity error: the file "%s" is modified.', strFile)
+              fIntegrityOk = false
+            end
+          end
+        end
+      end
+    end
+  end
+
+  if fIntegrityOk==true then
+    tLog.info('Package integrity: OK')
+  else
+    tLog.alert('Package integrity: error')
+  end
+end
+
+
+
 function TestSystem:run()
   self:parse_commandline_arguments()
   local tLogSystem = self.tLogSystem
 
   -- Store the system parameters here.
   self.m_atSystemParameter = {}
+
+  -- Check the test integrity.
+  self:showPackageInformation()
+  self:checkIntegrity()
 
   -- Read the test.xml file.
   local tTestDescription = self.TestDescription(tLogSystem)
