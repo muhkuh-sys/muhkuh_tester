@@ -540,8 +540,6 @@ function TestSystem:check_parameters(tTestDescription)
       self.tLogSystem.debug('Skipping deactivated test %02d:%s .', uiTestIndex, strTestCaseName)
     else
       -- Get the parameters for the module.
-      local atParameters = tModule.CFG_aParameterDefinitions
-
       for _, tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
         -- Ignore output parameter. They will be set when the test is executed.
         if tParameter.fIsOutput==true then
