@@ -649,7 +649,7 @@ function TestSystem:run_tests()
   end
 
   -- Close the connection to the netX.
-  tester:closeCommonPlugin()
+  _G.tester:closeCommonPlugin()
 
   -- Print the result in huge letters.
   if fTestResult==true then
