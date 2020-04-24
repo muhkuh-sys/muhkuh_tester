@@ -711,7 +711,7 @@ function TestSystem:showPackageInformation()
     tLog.debug('Reading the package file "%s".', strPackageInfoFile)
     local tPackageInfo, strError = pl.config.read(strPackageInfoFile)
     if tPackageInfo==nil then
-      tLog.warning('No version information available. The package file "%s" is invalid: %s', strPackageInfoFile)
+      tLog.warning('No version information available. The package file "%s" is invalid: %s', strPackageInfoFile, strError)
     else
       -- Check for the required fields.
       local astrRequiredFields = {
