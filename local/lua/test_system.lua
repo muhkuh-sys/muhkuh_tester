@@ -235,12 +235,12 @@ function TestSystem:parse_commandline_arguments()
 
   local fUseColor = tArgs.fUseColor
   if fUseColor==nil then
-    if strDirectorySeparator=='\\' then
-      -- Running on windows. Do not use colors here as the default cmd.exe does
-      -- not support this.
+    if self.pl.path.is_windows==true then
+      -- Running on windows. Do not use colors by default as cmd.exe
+      -- does not support ANSI on all windows versions.
       fUseColor = false
     else
-      -- Running on Linux. Use colors.
+      -- Running on Linux. Use colors by default.
       fUseColor = true
     end
   end
