@@ -44,7 +44,7 @@ end
 
 
 
-function TestSystem:collect_testcases()
+function TestSystem:collect_testcases(tTestDescription)
   local tResult = true
 
   for _, uiTestCase in ipairs(self.auiTests) do
@@ -61,6 +61,18 @@ function TestSystem:collect_testcases()
     -- Load the test case.
     local tClass = require(strTestCaseFilename)
     local tModule = tClass(uiTestCase, self.tLogWriter, self.strLogLevel)
+
+    -- The ID defined in the class must match the ID from the test description.
+    local strDefinitionId = tTestDescription:getTestCaseName(uiTestCase)
+    local strModuleId = tModule.CFG_strTestName
+    if strModuleId~=strDefinitionId then
+      self.tLogSystem.fatal('The ID of test %d differs between the test definition and the module.', uiTestCase)
+      self.tLogSystem.debug('The ID of test %d in the test definition is "%s".', uiTestCase, strDefinitionId)
+      self.tLogSystem.debug('The ID of test %d in the module is "%s".', uiTestCase, strModuleId)
+      tResult = nil
+      break
+    end
+
     self.atModules[uiTestCase] = tModule
   end
 
@@ -867,7 +879,7 @@ function TestSystem:run()
     local cTester = require 'tester_cli'
     _G.tester = cTester(tLogSystem)
 
-    tResult = self:collect_testcases()
+    tResult = self:collect_testcases(tTestDescription)
     if tResult==true then
       if self.fShowParameters==true then
         self:show_all_parameters()
