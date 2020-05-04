@@ -44,7 +44,8 @@ end
 
 
 
-function TestSystem:collect_testcases(tTestDescription)
+function TestSystem:collect_testcases()
+  local tTestDescription = self.tTestDescription
   local tResult = true
 
   for _, uiTestCase in ipairs(self.auiTests) do
@@ -140,17 +141,7 @@ end
 -- @param strModuleName The module name to search.
 -- @return The index if the name was found or nil if the name was not found.
 function TestSystem:get_module_index(strModuleName)
-  local iResult = nil
-
-  -- Loop over all available modules.
-  for iCnt,tModule in ipairs(self.atModules) do
-    if tModule.CFG_strTestName==strModuleName then
-      iResult = iCnt
-      break
-    end
-  end
-
-  return iResult
+  return self.tTestDescription:getTestCaseIndex(strModuleName)
 end
 
 
@@ -381,7 +372,8 @@ end
 
 
 
-function TestSystem:collect_parameters(tTestDescription)
+function TestSystem:collect_parameters()
+  local tTestDescription = self.tTestDescription
   local tResult = true
 
   -- Collect all parameters from the command line.
@@ -540,7 +532,9 @@ end
 
 
 
-function TestSystem:check_parameters(tTestDescription)
+function TestSystem:check_parameters()
+  local tTestDescription = self.tTestDescription
+
   -- Check all parameters.
   local fParametersOk = true
 
@@ -858,6 +852,8 @@ function TestSystem:run()
   if tResult~=true then
     tLogSystem.error('Failed to parse the test description.')
   else
+    self.tTestDescription = tTestDescription
+
     -- Run all tests if no test numbers were specified on the command line.
     local uiTestCases = tTestDescription:getNumberOfTests()
     if self.auiTests==nil then
@@ -884,14 +880,14 @@ function TestSystem:run()
     local cTester = require 'tester_cli'
     _G.tester = cTester(tLogSystem)
 
-    tResult = self:collect_testcases(tTestDescription)
+    tResult = self:collect_testcases()
     if tResult==true then
       if self.fShowParameters==true then
         self:show_all_parameters()
       else
-        tResult = self:collect_parameters(tTestDescription)
+        tResult = self:collect_parameters()
         if tResult==true then
-          tResult = self:check_parameters(tTestDescription)
+          tResult = self:check_parameters()
           if tResult==true then
             tResult = self:run_tests()
           end
