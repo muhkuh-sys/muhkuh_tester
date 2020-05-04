@@ -104,27 +104,32 @@ end
 function TestSystem:show_all_parameters()
   print("All parameters:")
   print("")
-  for uiTestCase,tModule in ipairs(self.atModules) do
-    local strTestName = tModule.CFG_strTestName
-    print(string.format("  Test case %02d: '%s'", uiTestCase, strTestName))
+  for _, uiTestCase in ipairs(self.auiTests) do
+    local tModule = self.atModules[uiTestCase]
+    if tModule==nil then
+      self.tLogSystem.fatal('Test case %02d does not exist.', uiTestCase)
+    else
+      local strTestName = tModule.CFG_strTestName
+      print(string.format("  Test case %02d: '%s'", uiTestCase, strTestName))
 
-    local atPrint = {}
-    for _, tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
-      -- Is this parameter an input or an output?
-      local strInOut = 'IN '
-      if tParameter.fIsOutput==true then
-        strInOut = 'OUT'
+      local atPrint = {}
+      for _, tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
+        -- Is this parameter an input or an output?
+        local strInOut = 'IN '
+        if tParameter.fIsOutput==true then
+          strInOut = 'OUT'
+        end
+
+        local strDefault = "no default value"
+        if tParameter.fHasDefaultValue==true then
+          strDefault = string.format("default: %s", tostring(tParameter.tDefaultValue))
+        end
+
+        table.insert(atPrint, { string.format("%s %02d:%s", strInOut, uiTestCase, tParameter.strName), {tParameter.strHelp, strDefault}})
       end
-
-      local strDefault = "no default value"
-      if tParameter.fHasDefaultValue==true then
-        strDefault = string.format("default: %s", tostring(tParameter.tDefaultValue))
-      end
-
-      table.insert(atPrint, { string.format("%s %02d:%s", strInOut, uiTestCase, tParameter.strName), {tParameter.strHelp, strDefault}})
+      self:print_aligned(atPrint, "    %s  %s")
+      print("")
     end
-    self:print_aligned(atPrint, "    %s  %s")
-    print("")
   end
 end
 
