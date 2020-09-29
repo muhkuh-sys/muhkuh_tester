@@ -219,7 +219,8 @@ function tPostTriggerAction:run(tInstallHelper)
                 else
                   -- Parse the install script.
                   local strInstallScript = tFileResult
-                  tResult, strError = loadstring(strInstallScript, strInstallScriptPath)
+                  local _loadstring = loadstring or load
+                  tResult, strError = _loadstring(strInstallScript, strInstallScriptPath)
                   if tResult==nil then
                     tResult = nil
                     tLog.error('Failed to parse the test case install script "%s": %s', strInstallScriptPath, strError)
