@@ -147,6 +147,8 @@ end
 
 
 function TestSystem:parse_commandline_arguments()
+  local mime = require 'mime.core'
+
   local atLogLevels = {
     'debug',
     'info',
@@ -208,6 +210,24 @@ function TestSystem:parse_commandline_arguments()
         return nil, string.format("The parameter definition has an invalid format: '%s'", strArg)
       else
         return strArg
+      end
+    end)
+    :target('astrRawParameters')
+  tParser:option('-b --base64-parameter')
+    :description('Set the parameter PARAMETER of test case TEST-CASE-ID to the base64 decoded value of BASE64VALUE.')
+    :argname('<TEST-CASE-ID>:<PARAMETER>=<BASE64VALUE>')
+    :count('*')
+    :convert(function(strArg)
+      local tMatch0, tMatch1, tMatch2 = string.match(strArg, "([0-9a-zA-Z_]+):([0-9a-zA-Z_]+)=(.*)")
+      if tMatch0==nil then
+        return nil, string.format("The parameter definition has an invalid format: '%s'", strArg)
+      else
+        local strDecoded = mime.unb64(tMatch2)
+        if strDecoded==nil then
+          return nil, string.format("The value of the parameter definition is no valid base64: '%s'", strArg)
+        else
+          return tMatch0 .. ':' .. tMatch1 .. '=' .. strDecoded
+        end
       end
     end)
     :target('astrRawParameters')

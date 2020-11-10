@@ -17,5 +17,6 @@
 		<dependency group="com.github.tieske" module="date" artifact="date" version="2.1"/>
 		<dependency group="uk.co.matthewwild" module="luaexpat" artifact="lua5.4-luaexpat" version="1.3"/>
 		<dependency group="org.muhkuh.lua" module="mhash" artifact="lua5.4-mhash" version="0.9.9.9"/>
+		<dependency group="com.github.diegonehab" module="luasocket" artifact="lua5.4-luasocket" version="3.0"/>
 	</dependencies>
 </jonchki-artifact>
