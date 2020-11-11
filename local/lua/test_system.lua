@@ -916,7 +916,11 @@ function TestSystem:run()
     end
   end
 
-  return tResult
+  local iResult = 1
+  if tResult==true then
+    iResult = 0
+  end
+  return iResult
 end
 
 
