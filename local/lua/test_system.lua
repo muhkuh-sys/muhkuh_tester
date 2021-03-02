@@ -31,6 +31,9 @@ function TestSystem:_init()
   self.argparse = require 'argparse'
   self.mhash = require 'mhash'
   self.TestDescription = require 'test_description'
+  self.zmq = require 'lzmq'
+  self.json = require 'dkjson'
+  self.date = require 'date'
 
   -- This is a log writer connected to all outputs (console and optionally file).
   -- It is used to create new log targets with special prefixes for each test.
@@ -40,6 +43,116 @@ function TestSystem:_init()
 
   -- This is a logger with "SYSTEM" prefix.
   self.tLogSystem = nil
+
+  self.m_zmqPort = nil
+  self.m_zmqContext = nil
+  self.m_zmqSocket = nil
+  self.m_atTestExecutionParameter = nil
+  self.m_atSystemParameter = nil
+end
+
+
+
+function TestSystem:__connect()
+  local usServerPort = self.m_zmqPort
+  if usServerPort==0 then
+    print('Not connecting to a server as the server port is 0.')
+  else
+    local strAddress = string.format('tcp://127.0.0.1:%d', usServerPort)
+    print(string.format("Connecting to %s", strAddress))
+
+    -- Create the 0MQ context.
+    local zmq = self.zmq
+    local tZContext, strErrorCtx = zmq.context()
+    if tZContext==nil then
+      error('Failed to create ZMQ context: ' .. tostring(strErrorCtx))
+    end
+    self.m_zmqContext = tZContext
+
+    -- Create the socket.
+    local tZSocket, strErrorSocket = tZContext:socket(zmq.PAIR)
+    if tZSocket==nil then
+      error('Failed to create ZMQ socket: ' .. tostring(strErrorSocket))
+    end
+
+    -- Connect the socket to the server.
+    local tResult, strErrorConnect = tZSocket:connect(strAddress)
+    if tResult==nil then
+      error('Failed to connect the socket: ' .. tostring(strErrorConnect))
+    end
+    self.m_zmqSocket = tZSocket
+
+    print(string.format('0MQ socket connected to tcp://127.0.0.1:%d', usServerPort))
+  end
+end
+
+
+
+function TestSystem:__disconnect()
+  local m_zmqSocket = self.m_zmqSocket
+  if m_zmqSocket~=nil then
+    if m_zmqSocket:closed()==false then
+      m_zmqSocket:close()
+    end
+    self.m_zmqSocket = nil
+  end
+
+  local m_zmqContext = self.m_zmqContext
+  if m_zmqContext~=nil then
+    m_zmqContext:destroy()
+    self.m_zmqContext = nil
+  end
+end
+
+
+
+function TestSystem:__sendTestRunStart()
+  local tZmqSocket = self.m_zmqSocket
+  if tZmqSocket~=nil then
+    local tData = {
+      attributes = self.m_atSystemParameter
+    }
+    local strJson = self.json.encode(tData)
+    tZmqSocket:send('TDS'..strJson)
+  end
+end
+
+
+
+function TestSystem:__sendTestRunFinished()
+  local tZmqSocket = self.m_zmqSocket
+  if tZmqSocket~=nil then
+    tZmqSocket:send('TDF')
+  end
+end
+
+
+
+function TestSystem:__sendTestStepStart(uiStepIndex, strTestCaseId, strTestCaseName)
+  local tZmqSocket = self.m_zmqSocket
+  if tZmqSocket~=nil then
+    local tData = {
+      stepIndex=uiStepIndex,
+      testId=strTestCaseId,
+      testName=strTestCaseName,
+      attributes = self.m_atSystemParameter
+    }
+    local strJson = self.json.encode(tData)
+    tZmqSocket:send('TSS'..strJson)
+  end
+end
+
+
+
+function TestSystem:__sendTestStepFinished(strTestStepState)
+  local tZmqSocket = self.m_zmqSocket
+  if tZmqSocket~=nil then
+    local tData = {
+      testStepState=strTestStepState
+    }
+    local strJson = self.json.encode(tData)
+    tZmqSocket:send('TSF'..strJson)
+  end
 end
 
 
@@ -196,10 +309,18 @@ function TestSystem:parse_commandline_arguments()
     :argname('<FILE>')
     :default(nil)
     :target('strLogFileName')
-  tParser:flag('-i --interactive-plugin-selection')
-    :description('Ask the user to pick a plugin. The default is to select a plugin automatically.')
-    :default(false)
-    :target('fInteractivePluginSelection')
+  tParser:mutex(
+    tParser:flag('-i --interactive-plugin-selection')
+      :description('Ask the user to pick a plugin. The default is to select a plugin automatically.')
+      :default(false)
+      :target('fInteractivePluginSelection'),
+    tParser:option('-S --server-port')
+      :description('Connect to a server on localhost with port number PORT. The default of 0 deactivates the connection.')
+      :argname('PORT')
+      :default(0)
+      :convert(tonumber)
+      :target('usServerPort')
+  )
   tParser:option('-p --parameter')
     :description('Set the parameter PARAMETER of test case TEST-CASE-ID to the value VALUE.')
     :argname('<TEST-CASE-ID>:<PARAMETER>=<VALUE>')
@@ -261,6 +382,9 @@ function TestSystem:parse_commandline_arguments()
 
   self.fShowParameters = tArgs.fShowParameters
 
+  self.m_zmqPort = tArgs.usServerPort
+  self:__connect()
+
   local fUseColor = tArgs.fUseColor
   if fUseColor==nil then
     if self.pl.path.is_windows==true then
@@ -273,23 +397,37 @@ function TestSystem:parse_commandline_arguments()
     end
   end
 
+  local tZmqSocket = self.m_zmqSocket
+
   -- Collect all log writers.
   local atLogWriters = {}
 
-  -- Create the console logger.
-  local tLogWriterConsole
-  if fUseColor==true then
-    tLogWriterConsole = require 'log.writer.console.color'.new()
-  else
-    tLogWriterConsole = require 'log.writer.console'.new()
+  -- Create the console logger if no server connection exists.
+  if tZmqSocket==nil then
+    local tLogWriterConsole
+    if fUseColor==true then
+      tLogWriterConsole = require 'log.writer.console.color'.new()
+    else
+      tLogWriterConsole = require 'log.writer.console'.new()
+    end
+    table.insert(atLogWriters, tLogWriterConsole)
   end
-  table.insert(atLogWriters, tLogWriterConsole)
 
   -- Create the file logger if requested.
-  local tLogWriterFile
   if tArgs.strLogFileName~=nil then
-    tLogWriterFile = require 'log.writer.file'.new{ log_name=tArgs.strLogFileName }
+    local tLogWriterFile = require 'log.writer.file'.new{ log_name=tArgs.strLogFileName }
     table.insert(atLogWriters, tLogWriterFile)
+  end
+
+  -- Create the 0MQ logger if a socket exists.
+  if tZmqSocket~=nil then
+    -- Now create the logger. It sends the data to the ZMQ socket.
+    -- It does not use the formatter function 'fnFormat' or the date 'tDate'.
+    -- This is done on the receiver side.
+    local tLogWriterZmq = function(fnFormat, strMessage, uiLevel, tDate)
+      tZmqSocket:send(string.format('LOG%d,%s', uiLevel, strMessage))
+    end
+    table.insert(atLogWriters, tLogWriterZmq)
   end
 
   -- Combine all writers.
@@ -603,79 +741,106 @@ end
 
 function TestSystem:run_tests()
   local tLogSystem = self.tLogSystem
+  local tTestDescription = self.tTestDescription
+  local date = self.date
 
   -- Run all enabled modules with their parameter.
   local fTestResult = true
 
   for _, uiTestCase in ipairs(self.auiTests) do
+    -- Start a new "test run" event.
+    local tEventTestRun = { start=date(false):fmt('%Y-%m-%d %H:%M:%S'), parameter={} }
+
     -- Get the module for the test index.
     local tModule = self.atModules[uiTestCase]
     if tModule==nil then
       tLogSystem.fatal('Test case %02d not found!', uiTestCase)
       fTestResult = false
-      break
     end
 
-    -- Get the name for the test case index.
-    local strTestCaseName = tModule.CFG_strTestName
-    tLogSystem.info('Running testcase %d (%s).', uiTestCase, strTestCaseName)
+    if fTestResult==true then
+      -- Get the name for the test case index.
+      local strTestCaseName = tModule.CFG_strTestName
+      local strTestCaseId = tTestDescription:getTestCaseId(uiTestCase)
+      self:__sendTestStepStart(uiTestCase, strTestCaseId, strTestCaseName)
+      tLogSystem.info('Running testcase %d (%s).', uiTestCase, strTestCaseName)
 
-    -- Get the parameters for the module.
-    local atParameters = tModule.CFG_aParameterDefinitions
+      -- Get the parameters for the module.
+      local atParameters = tModule.CFG_aParameterDefinitions
 
-    -- Validate all input parameters.
-    for _, tParameter in ipairs(atParameters) do
-      if tParameter.fIsOutput~=true then
-        local fValid, strError = tParameter:validate()
-        if fValid==false then
-          tLogSystem.fatal('Failed to validate the parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
-          fTestResult = false
-          break
-        end
-      end
-    end
-
-    -- Show all parameters for the test case.
-    tLogSystem.info("__/Parameters/________________________________________________________________")
-    if self.pl.tablex.size(atParameters)==0 then
-      tLogSystem.info('Testcase %d (%s) has no parameter.', uiTestCase, strTestCaseName)
-    else
-      tLogSystem.info('Parameters for testcase %d (%s):', uiTestCase, strTestCaseName)
-      for _, tParameter in pairs(atParameters) do
-        -- Do not dump output parameter. They have no value yet.
+      -- Validate all input parameters.
+      for _, tParameter in ipairs(atParameters) do
         if tParameter.fIsOutput~=true then
-          tLogSystem.info('  %02d:%s = %s', uiTestCase, tParameter.strName, tParameter:get_pretty())
+          local fValid, strError = tParameter:validate()
+          if fValid==false then
+            tLogSystem.fatal('Failed to validate the parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
+            fTestResult = false
+            break
+          end
+        end
+      end
+
+      if fTestResult==true then
+        -- Show all parameters for the test case.
+        tLogSystem.info("__/Parameters/________________________________________________________________")
+        if self.pl.tablex.size(atParameters)==0 then
+          tLogSystem.info('Testcase %d (%s) has no parameter.', uiTestCase, strTestCaseName)
+        else
+          tLogSystem.info('Parameters for testcase %d (%s):', uiTestCase, strTestCaseName)
+          for _, tParameter in pairs(atParameters) do
+            -- Do not dump output parameter. They have no value yet.
+            if tParameter.fIsOutput~=true then
+              local strValue = tParameter:get_pretty()
+              tEventTestRun.parameter[tParameter.strName] = strValue
+              tLogSystem.info('  %02d:%s = %s', uiTestCase, tParameter.strName, strValue)
+            end
+          end
+        end
+        tLogSystem.info("______________________________________________________________________________")
+
+        -- Execute the test code. Write a stack trace to the debug logger if the test case crashes.
+        local fStatus, tResult = xpcall(function() tModule:run() end, function(tErr) tLogSystem.debug(debug.traceback()) return tErr end)
+        if not fStatus then
+          local strError
+          if tResult~=nil then
+            strError = tostring(tResult)
+          else
+            strError = 'No error message.'
+          end
+          tLogSystem.error('Error running the test: %s', strError)
+
+          fTestResult = false
+        end
+
+        -- Validate all output parameters.
+        for _, tParameter in ipairs(atParameters) do
+          if tParameter.fIsOutput==true then
+            local fValid, strError = tParameter:validate()
+            if fValid==false then
+              tLogSystem.warning('Failed to validate the output parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
+            end
+          end
         end
       end
     end
-    tLogSystem.info("______________________________________________________________________________")
 
-    -- Execute the test code. Write a stack trace to the debug logger if the test case crashes.
-    local fStatus, tResult = xpcall(function() tModule:run() end, function(tErr) tLogSystem.debug(debug.traceback()) return tErr end)
     local strTestResult = 'SUCCESS'
-    if not fStatus then
+    local strTestState = 'ok'
+    if fTestResult~=true then
       strTestResult = 'ERROR'
-      local strError
-      if tResult~=nil then
-        strError = tostring(tResult)
-      else
-        strError = 'No error message.'
-      end
-      tLogSystem.error('Error running the test: %s', strError)
-
-      fTestResult = false
-      break
+      strTestState = 'error'
     end
+
     tLogSystem.info('Testcase %d (%s) finished with result %s.', uiTestCase, strTestCaseName, strTestResult)
 
-    -- Validate all output parameters.
-    for _, tParameter in ipairs(atParameters) do
-      if tParameter.fIsOutput==true then
-        local fValid, strError = tParameter:validate()
-        if fValid==false then
-          tLogSystem.warning('Failed to validate the output parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
-        end
-      end
+    tEventTestRun['end'] = date(false):fmt('%Y-%m-%d %H:%M:%S')
+    tEventTestRun.result = strTestState
+    _G.tester:sendLogEvent('muhkuh.test.run', tEventTestRun)
+    self:__sendTestStepFinished(strTestState)
+
+    -- Do not execute the following test steps.
+    if fTestResult~=true then
+      break
     end
   end
 
@@ -862,6 +1027,8 @@ function TestSystem:run()
   -- Store the system parameters here.
   self.m_atSystemParameter = {}
 
+  self:__sendTestRunStart()
+
   -- Check the test integrity.
   self:showPackageInformation()
   self:checkIntegrity()
@@ -899,6 +1066,7 @@ function TestSystem:run()
     -- Create the global tester.
     local cTester = require 'tester_cli'
     _G.tester = cTester(tLogSystem)
+    _G.tester:setSocket(self.m_zmqSocket)
 
     tResult = self:collect_testcases()
     if tResult==true then
@@ -915,6 +1083,9 @@ function TestSystem:run()
       end
     end
   end
+
+  self:__sendTestRunFinished()
+  self:__disconnect()
 
   local iResult = 1
   if tResult==true then
