@@ -752,6 +752,7 @@ function TestSystem:run_tests()
     local tEventTestRun = { start=date(false):fmt('%Y-%m-%d %H:%M:%S'), parameter={} }
 
     local strTestCaseName = 'unknown_test'
+    local strTestMessage = ''
 
     -- Get the module for the test index.
     local tModule = self.atModules[uiTestCase]
@@ -809,6 +810,7 @@ function TestSystem:run_tests()
           else
             strError = 'No error message.'
           end
+          strTestMessage = strError
           tLogSystem.error('Error running the test: %s', strError)
 
           fTestResult = false
@@ -837,6 +839,7 @@ function TestSystem:run_tests()
 
     tEventTestRun['end'] = date(false):fmt('%Y-%m-%d %H:%M:%S')
     tEventTestRun.result = strTestState
+    tEventTestRun.message = strTestMessage
     _G.tester:sendLogEvent('muhkuh.test.run', tEventTestRun)
     self:__sendTestStepFinished(strTestState)
 
