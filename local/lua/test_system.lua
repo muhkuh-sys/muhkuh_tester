@@ -751,6 +751,8 @@ function TestSystem:run_tests()
     -- Start a new "test run" event.
     local tEventTestRun = { start=date(false):fmt('%Y-%m-%d %H:%M:%S'), parameter={} }
 
+    local strTestCaseName = 'unknown_test'
+
     -- Get the module for the test index.
     local tModule = self.atModules[uiTestCase]
     if tModule==nil then
@@ -760,7 +762,7 @@ function TestSystem:run_tests()
 
     if fTestResult==true then
       -- Get the name for the test case index.
-      local strTestCaseName = tModule.CFG_strTestName
+      strTestCaseName = tModule.CFG_strTestName
       local strTestCaseId = tTestDescription:getTestCaseId(uiTestCase)
       self:__sendTestStepStart(uiTestCase, strTestCaseId, strTestCaseName)
       tLogSystem.info('Running testcase %d (%s).', uiTestCase, strTestCaseName)
