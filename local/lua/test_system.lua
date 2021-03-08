@@ -747,6 +747,23 @@ function TestSystem:run_tests()
   -- Run all enabled modules with their parameter.
   local fTestResult = true
 
+  -- Collect all results in the "test result" event.
+  local tTestSteps = {}
+  local tEventTestResult = { start=date(false):fmt('%Y-%m-%d %H:%M:%S'), steps=tTestSteps }
+  local uiTestCases = tTestDescription:getNumberOfTests()
+  for uiTestCase = 1, uiTestCases do
+    local strTestCaseName
+    local tModule = self.atModules[uiTestCase]
+    if tModule~=nil then
+      strTestCaseName = tModule.CFG_strTestName
+    end
+    local strTestCaseId = tTestDescription:getTestCaseId(uiTestCase)
+    table.insert(tTestSteps, { name=strTestCaseName, id=strTestCaseId, state='inactive', message='' })
+  end
+  for _, uiTestCase in ipairs(self.auiTests) do
+    tTestSteps[uiTestCase].state = 'pending'
+  end
+
   for _, uiTestCase in ipairs(self.auiTests) do
     -- Start a new "test run" event.
     local tEventTestRun = { start=date(false):fmt('%Y-%m-%d %H:%M:%S'), parameter={} }
@@ -812,6 +829,7 @@ function TestSystem:run_tests()
           end
           strTestMessage = strError
           tLogSystem.error('Error running the test: %s', strError)
+          tTestSteps[uiTestCase].message = strError
 
           fTestResult = false
         end
@@ -834,6 +852,7 @@ function TestSystem:run_tests()
       strTestResult = 'ERROR'
       strTestState = 'error'
     end
+    tTestSteps[uiTestCase].state = strTestState
 
     tLogSystem.info('Testcase %d (%s) finished with result %s.', uiTestCase, strTestCaseName, strTestResult)
 
@@ -848,6 +867,10 @@ function TestSystem:run_tests()
       break
     end
   end
+
+  tEventTestResult['end'] = date(false):fmt('%Y-%m-%d %H:%M:%S')
+  tEventTestResult.result = tostring(fTestResult)
+  _G.tester:sendLogEvent('muhkuh.test.result', tEventTestResult)
 
   -- Close the connection to the netX.
   _G.tester:closeCommonPlugin()
