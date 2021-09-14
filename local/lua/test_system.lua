@@ -373,9 +373,40 @@ function TestSystem:parse_commandline_arguments()
       end
     end)
     :target('strLogLevel')
+  tParser:option('-d --debug')
+    :description('Set the IP address and the port number for the remote debugging.')
+    :argname('<IP>:<Port NUMBER>')
+    :convert(
+	function(strArg)
+      local tIp0, tIp1, tIp2, tIp3, tPortNumb = string.match(strArg, '^(%d+)%.(%d+)%.(%d+)%.(%d+)%:(%d+)$')
+      if tIp0==nil then
+		return nil, string.format("The given IP and port number '%s' (<IP>:<Port NUMBER>) has an invalid format, it should be [0-255].[0-255].[0-255].[0-255]:[0-65535] ", strArg)
+      else
+		local ucIp0 = tonumber(tIp0)
+		local ucIp1 = tonumber(tIp1)
+		local ucIp2 = tonumber(tIp2)
+		local ucIp3 = tonumber(tIp3)
+		local uiPortNumb = tonumber(tPortNumb)
 
+			if ucIp0<0 or ucIp0>255 or ucIp1<0 or ucIp1>255 or ucIp2<0 or ucIp2>255 or ucIp3<0 or ucIp3>255 then
+				return nil, string.format('The componentes of the IP must be 0<=d<=255 .')
+			elseif uiPortNumb <0 or uiPortNumb > 65535 then
+				return nil, string.format('The port number must be 0<=d<=65535 .')
+			else
+				local tArg ={
+					IP = ucIp0 .. '.' .. ucIp1 .. '.' .. ucIp2 .. '.' .. ucIp3,
+					Port = uiPortNumb
+					}
+				return tArg
+			end
+		end
+    end)
+    :target('tDebugParam')
 
   local tArgs = tParser:parse()
+
+  -- debug parameters <IP>:<port number>
+  self.tDebugParam = tArgs.tDebugParam
 
   -- Save the selected log level.
   self.strLogLevel = tArgs.strLogLevel
@@ -818,6 +849,11 @@ function TestSystem:run_tests()
         end
         tLogSystem.info("______________________________________________________________________________")
 
+		-- Set a hard breakpoint before the test is running - only in the case of available and running debugger
+		if self.tLuaPanda ~= nil then
+			self.tLuaPanda.BP()
+		end
+
         -- Execute the test code. Write a stack trace to the debug logger if the test case crashes.
         local fStatus, tResult = xpcall(function() tModule:run() end, function(tErr) tLogSystem.debug(debug.traceback()) return tErr end)
         if not fStatus then
@@ -1047,6 +1083,30 @@ function TestSystem:checkIntegrity()
 end
 
 
+--- Initialize the remote debugger and test the connection
+function TestSystem:init_Debugger()
+	local tLogSystem = self.tLogSystem
+
+	if self.tDebugParam ~= nil then
+	-- Try to load the remote debugger.
+		local tResult, tLuaPanda = pcall(require, 'LuaPanda')
+		if tResult ~= true then
+			tLogSystem.error("Unable to load the debugger.")
+		else
+			-- start the client with the given IP and port number
+			tLuaPanda.start(self.tDebugParam.IP,self.tDebugParam.Port)
+
+			-- check the connection
+			tResult = tLuaPanda.isConnected()
+			if tResult ~= true then
+				tLogSystem.error("No connection to the debugger established.")
+			else
+				self.tLuaPanda = tLuaPanda
+			end
+		end
+	end
+end
+
 
 function TestSystem:run()
   self:parse_commandline_arguments()
@@ -1054,6 +1114,9 @@ function TestSystem:run()
 
   -- Store the system parameters here.
   self.m_atSystemParameter = {}
+
+  -- Only in the case of available IP and port number
+  self:init_Debugger()
 
   self:__sendTestRunStart()
 
