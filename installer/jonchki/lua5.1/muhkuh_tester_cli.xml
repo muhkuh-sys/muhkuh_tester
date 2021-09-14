@@ -20,5 +20,6 @@
 		<dependency group="de.dkolf" module="dkjson" artifact="dkjson" version="2.5"/>
 		<dependency group="org.muhkuh.lua" module="mhash" artifact="lua5.1-mhash" version="0.9.9.9"/>
 		<dependency group="uk.co.matthewwild" module="luaexpat" artifact="lua5.1-luaexpat" version="1.3"/>
+		<dependency group="com.github.Tencent" module="LuaPanda" artifact="LuaPanda" version="3.2"/>
 	</dependencies>
 </jonchki-artifact>
