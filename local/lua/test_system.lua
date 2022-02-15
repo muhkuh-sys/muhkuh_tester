@@ -373,6 +373,30 @@ function TestSystem:parse_commandline_arguments()
       end
     end)
     :target('strLogLevel')
+  tParser:option('--verbose-console')
+    :description(string.format('Set the verbosity level for the console output to LEVEL. Possible values for LEVEL are %s.', table.concat(atLogLevels, ', ')))
+    :argname('<LEVEL>')
+    :convert(function(strArg)
+      local tIdx = self.pl.tablex.find(atLogLevels, strArg)
+      if tIdx==nil then
+        return nil, string.format('Invalid console verbosity level "%s". Possible values are %s.', strArg, table.concat(atLogLevels, ', '))
+      else
+        return strArg
+      end
+    end)
+    :target('strLogLevelConsole')
+  tParser:option('--verbose-file')
+    :description(string.format('Set the verbosity level for the file output to LEVEL. Possible values for LEVEL are %s.', table.concat(atLogLevels, ', ')))
+    :argname('<LEVEL>')
+    :convert(function(strArg)
+      local tIdx = self.pl.tablex.find(atLogLevels, strArg)
+      if tIdx==nil then
+        return nil, string.format('Invalid file verbosity level "%s". Possible values are %s.', strArg, table.concat(atLogLevels, ', '))
+      else
+        return strArg
+      end
+    end)
+    :target('strLogLevelFile')
   tParser:option('-d --debug')
     :description('Set the IP address and the port number for the remote debugging.')
     :argname('<IP>:<Port NUMBER>')
@@ -410,6 +434,9 @@ function TestSystem:parse_commandline_arguments()
 
   -- Save the selected log level.
   self.strLogLevel = tArgs.strLogLevel
+  -- Get the log levels for the console and file. Fallback to the log level if they are not set.
+  local strLogLevelConsole = tArgs.strLogLevelConsole or tArgs.strLogLevel
+  local strLogLevelFile = tArgs.strLogLevelFile or tArgs.strLogLevel
 
   self.fShowParameters = tArgs.fShowParameters
 
@@ -441,12 +468,12 @@ function TestSystem:parse_commandline_arguments()
     else
       tLogWriterConsole = require 'log.writer.console'.new()
     end
-    table.insert(atLogWriters, tLogWriterConsole)
+    table.insert(atLogWriters, require "log.writer.filter".new(strLogLevelConsole, tLogWriterConsole))
   end
 
   -- Create the file logger if requested.
   if tArgs.strLogFileName~=nil then
-    local tLogWriterFile = require 'log.writer.file'.new{ log_name=tArgs.strLogFileName }
+    local tLogWriterFile = require "log.writer.filter".new(strLogLevelFile, require 'log.writer.file'.new{ log_name=tArgs.strLogFileName })
     table.insert(atLogWriters, tLogWriterFile)
   end
 
