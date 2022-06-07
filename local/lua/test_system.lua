@@ -48,7 +48,6 @@ function TestSystem:_init()
   self.m_zmqContext = nil
   self.m_zmqSocket = nil
   self.m_atTestExecutionParameter = nil
-  self.m_atSystemParameter = nil
 end
 
 
@@ -1163,8 +1162,6 @@ function TestSystem:run()
   -- Only in the case of available IP and port number
   self:init_Debugger()
 
-  self:__sendTestRunStart()
-
   -- Check the test integrity.
   local tPackageInfo = self:showPackageInformation()
   self:checkIntegrity()
@@ -1213,6 +1210,8 @@ function TestSystem:run()
         if tResult==true then
           tResult = self:check_parameters()
           if tResult==true then
+            self:__sendTestRunStart()
+
             tResult = self:run_tests(tPackageInfo)
           end
         end
