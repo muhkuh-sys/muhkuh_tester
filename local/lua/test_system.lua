@@ -797,10 +797,24 @@ end
 
 
 
-function TestSystem:run_tests()
+function TestSystem:run_tests(tPackageInfo)
   local tLogSystem = self.tLogSystem
   local tTestDescription = self.tTestDescription
   local date = self.date
+
+  local uiTestCases = tTestDescription:getNumberOfTests()
+
+  -- Create a new "test start" event.
+  local atSelection = {}
+  for uiTestCase = 1, uiTestCases do
+    local tModule = self.atModules[uiTestCase]
+    local fRunTest = (tModule~=nil)
+    table.insert(atSelection, fRunTest)
+  end
+  _G.tester:sendLogEvent('muhkuh.test.start', {
+    package = tPackageInfo,
+    selection = atSelection
+  })
 
   -- Run all enabled modules with their parameter.
   local fTestResult = true
@@ -808,7 +822,6 @@ function TestSystem:run_tests()
   -- Collect all results in the "test result" event.
   local tTestSteps = {}
   local tEventTestResult = { start=date(false):fmt('%Y-%m-%d %H:%M:%S'), steps=tTestSteps }
-  local uiTestCases = tTestDescription:getNumberOfTests()
   for uiTestCase = 1, uiTestCases do
     local strTestCaseName
     local tModule = self.atModules[uiTestCase]
@@ -989,6 +1002,7 @@ end
 function TestSystem:showPackageInformation()
   local tLog = self.tLogSystem
   local pl = self.pl
+  local tPackageInfo
 
   -- Try to read the "package.txt" file.
   local strPackageInfoFile = pl.path.join('.jonchki', 'package.txt')
@@ -996,7 +1010,8 @@ function TestSystem:showPackageInformation()
     tLog.warning('No version information available. The package file "%s" does not exist.', strPackageInfoFile)
   else
     tLog.debug('Reading the package file "%s".', strPackageInfoFile)
-    local tPackageInfo, strError = pl.config.read(strPackageInfoFile)
+    local strError
+    tPackageInfo, strError = pl.config.read(strPackageInfoFile)
     if tPackageInfo==nil then
       tLog.warning('No version information available. The package file "%s" is invalid: %s', strPackageInfoFile, strError)
     else
@@ -1018,6 +1033,7 @@ function TestSystem:showPackageInformation()
       end
       if fAllRequiredFieldsOk~=true then
         tLog.warning('No version information available. Some required fields are missing in the package info file "%s".', strPackageInfoFile)
+        tPackageInfo = nil
       else
         tLog.info('Package info:')
         tLog.info('  Package name:              %s', tPackageInfo['PACKAGE_NAME'])
@@ -1029,6 +1045,8 @@ function TestSystem:showPackageInformation()
       end
     end
   end
+
+  return tPackageInfo
 end
 
 
@@ -1148,7 +1166,7 @@ function TestSystem:run()
   self:__sendTestRunStart()
 
   -- Check the test integrity.
-  self:showPackageInformation()
+  local tPackageInfo = self:showPackageInformation()
   self:checkIntegrity()
 
   -- Read the test.xml file.
@@ -1195,7 +1213,7 @@ function TestSystem:run()
         if tResult==true then
           tResult = self:check_parameters()
           if tResult==true then
-            tResult = self:run_tests()
+            tResult = self:run_tests(tPackageInfo)
           end
         end
       end
