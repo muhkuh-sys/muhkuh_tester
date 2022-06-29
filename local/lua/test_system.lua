@@ -193,7 +193,7 @@ function TestSystem:collect_testcases()
 end
 
 
-function TestSystem:print_aligned(aLines, strFormat)
+function TestSystem.print_aligned(aLines, strFormat)
   -- Get the maximum size of the lines.
   local sizLineMax = 0
   for _, aLine in ipairs(aLines) do
@@ -238,9 +238,12 @@ function TestSystem:show_all_parameters()
           strDefault = string.format("default: %s", tostring(tParameter.tDefaultValue))
         end
 
-        table.insert(atPrint, { string.format("%s %02d:%s", strInOut, uiTestCase, tParameter.strName), {tParameter.strHelp, strDefault}})
+        table.insert(atPrint, {
+          string.format("%s %02d:%s", strInOut, uiTestCase, tParameter.strName),
+          {tParameter.strHelp, strDefault}
+        })
       end
-      self:print_aligned(atPrint, "    %s  %s")
+      self.print_aligned(atPrint, "    %s  %s")
       print("")
     end
   end
@@ -314,7 +317,9 @@ function TestSystem:parse_commandline_arguments()
       :default(false)
       :target('fInteractivePluginSelection'),
     tParser:option('-S --server-port')
-      :description('Connect to a server on localhost with port number PORT. The default of 0 deactivates the connection.')
+      :description(
+        'Connect to a server on localhost with port number PORT. The default of 0 deactivates the connection.'
+      )
       :argname('PORT')
       :default(0)
       :convert(tonumber)
@@ -360,37 +365,64 @@ function TestSystem:parse_commandline_arguments()
     end)
     :target('astrRawParameters')
   tParser:option('-v --verbose')
-    :description(string.format('Set the verbosity level to LEVEL. Possible values for LEVEL are %s.', table.concat(atLogLevels, ', ')))
+    :description(
+      string.format(
+        'Set the verbosity level to LEVEL. Possible values for LEVEL are %s.',
+        table.concat(atLogLevels, ', ')
+      )
+    )
     :argname('<LEVEL>')
     :default('warning')
     :convert(function(strArg)
       local tIdx = self.pl.tablex.find(atLogLevels, strArg)
       if tIdx==nil then
-        return nil, string.format('Invalid verbosity level "%s". Possible values are %s.', strArg, table.concat(atLogLevels, ', '))
+        return nil, string.format(
+          'Invalid verbosity level "%s". Possible values are %s.',
+          strArg,
+          table.concat(atLogLevels, ', ')
+        )
       else
         return strArg
       end
     end)
     :target('strLogLevel')
   tParser:option('--verbose-console')
-    :description(string.format('Set the verbosity level for the console output to LEVEL. Possible values for LEVEL are %s.', table.concat(atLogLevels, ', ')))
+    :description(
+      string.format(
+        'Set the verbosity level for the console output to LEVEL. Possible values for LEVEL are %s.',
+        table.concat(atLogLevels, ', ')
+      )
+    )
     :argname('<LEVEL>')
     :convert(function(strArg)
       local tIdx = self.pl.tablex.find(atLogLevels, strArg)
       if tIdx==nil then
-        return nil, string.format('Invalid console verbosity level "%s". Possible values are %s.', strArg, table.concat(atLogLevels, ', '))
+        return nil, string.format(
+          'Invalid console verbosity level "%s". Possible values are %s.',
+          strArg,
+          table.concat(atLogLevels, ', ')
+        )
       else
         return strArg
       end
     end)
     :target('strLogLevelConsole')
   tParser:option('--verbose-file')
-    :description(string.format('Set the verbosity level for the file output to LEVEL. Possible values for LEVEL are %s.', table.concat(atLogLevels, ', ')))
+    :description(
+      string.format(
+        'Set the verbosity level for the file output to LEVEL. Possible values for LEVEL are %s.',
+        table.concat(atLogLevels, ', ')
+      )
+    )
     :argname('<LEVEL>')
     :convert(function(strArg)
       local tIdx = self.pl.tablex.find(atLogLevels, strArg)
       if tIdx==nil then
-        return nil, string.format('Invalid file verbosity level "%s". Possible values are %s.', strArg, table.concat(atLogLevels, ', '))
+        return nil, string.format(
+          'Invalid file verbosity level "%s". Possible values are %s.',
+          strArg,
+          table.concat(atLogLevels, ', ')
+        )
       else
         return strArg
       end
@@ -400,30 +432,35 @@ function TestSystem:parse_commandline_arguments()
     :description('Set the IP address and the port number for the remote debugging.')
     :argname('<IP>:<Port NUMBER>')
     :convert(
-	function(strArg)
-      local tIp0, tIp1, tIp2, tIp3, tPortNumb = string.match(strArg, '^(%d+)%.(%d+)%.(%d+)%.(%d+)%:(%d+)$')
-      if tIp0==nil then
-		return nil, string.format("The given IP and port number '%s' (<IP>:<Port NUMBER>) has an invalid format, it should be [0-255].[0-255].[0-255].[0-255]:[0-65535] ", strArg)
-      else
-		local ucIp0 = tonumber(tIp0)
-		local ucIp1 = tonumber(tIp1)
-		local ucIp2 = tonumber(tIp2)
-		local ucIp3 = tonumber(tIp3)
-		local uiPortNumb = tonumber(tPortNumb)
+      function(strArg)
+        local tIp0, tIp1, tIp2, tIp3, tPortNumb = string.match(strArg, '^(%d+)%.(%d+)%.(%d+)%.(%d+)%:(%d+)$')
+        if tIp0==nil then
+          return nil, string.format(
+            "The given IP and port number '%s' (<IP>:<Port NUMBER>) has an invalid format. " ..
+            "It should be [0-255].[0-255].[0-255].[0-255]:[0-65535].",
+            strArg
+          )
+        else
+          local ucIp0 = tonumber(tIp0)
+          local ucIp1 = tonumber(tIp1)
+          local ucIp2 = tonumber(tIp2)
+          local ucIp3 = tonumber(tIp3)
+          local uiPortNumb = tonumber(tPortNumb)
 
-			if ucIp0<0 or ucIp0>255 or ucIp1<0 or ucIp1>255 or ucIp2<0 or ucIp2>255 or ucIp3<0 or ucIp3>255 then
-				return nil, string.format('The componentes of the IP must be 0<=d<=255 .')
-			elseif uiPortNumb <0 or uiPortNumb > 65535 then
-				return nil, string.format('The port number must be 0<=d<=65535 .')
-			else
-				local tArg ={
-					IP = ucIp0 .. '.' .. ucIp1 .. '.' .. ucIp2 .. '.' .. ucIp3,
-					Port = uiPortNumb
-					}
-				return tArg
-			end
-		end
-    end)
+          if ucIp0<0 or ucIp0>255 or ucIp1<0 or ucIp1>255 or ucIp2<0 or ucIp2>255 or ucIp3<0 or ucIp3>255 then
+            return nil, string.format('The componentes of the IP must be 0<=d<=255 .')
+          elseif uiPortNumb <0 or uiPortNumb > 65535 then
+            return nil, string.format('The port number must be 0<=d<=65535 .')
+          else
+            local tArg ={
+              IP = ucIp0 .. '.' .. ucIp1 .. '.' .. ucIp2 .. '.' .. ucIp3,
+              Port = uiPortNumb
+              }
+            return tArg
+          end
+        end
+      end
+    )
     :target('tDebugParam')
 
   local tArgs = tParser:parse()
@@ -472,7 +509,12 @@ function TestSystem:parse_commandline_arguments()
 
   -- Create the file logger if requested.
   if tArgs.strLogFileName~=nil then
-    local tLogWriterFile = require "log.writer.filter".new(strLogLevelFile, require 'log.writer.file'.new{ log_name=tArgs.strLogFileName })
+    local tLogWriterFile = require "log.writer.filter".new(
+      strLogLevelFile,
+      require 'log.writer.file'.new{
+        log_name = tArgs.strLogFileName
+      }
+    )
     table.insert(atLogWriters, tLogWriterFile)
   end
 
@@ -481,7 +523,7 @@ function TestSystem:parse_commandline_arguments()
     -- Now create the logger. It sends the data to the ZMQ socket.
     -- It does not use the formatter function 'fnFormat' or the date 'tDate'.
     -- This is done on the receiver side.
-    local tLogWriterZmq = function(fnFormat, strMessage, uiLevel, tDate)
+    local tLogWriterZmq = function(_, strMessage, uiLevel, _)
       tZmqSocket:send(string.format('LOG%d,%s', uiLevel, strMessage))
     end
     table.insert(atLogWriters, tLogWriterZmq)
@@ -518,67 +560,75 @@ end
 function TestSystem:process_one_parameter(strParameterLine, atCliParameters)
   local tResult = true
 
-  -- Ignore end of file markers.
-  if strParameterLine==nil then
-    -- Ignore end of file markers.
-  -- Ignore empty lines.
-  elseif string.len(strParameterLine)==0 then
-    -- Ignore empty lines.
-  -- Ignore lines starting with a '#'. This is used in parameter files.
-  elseif string.sub(strParameterLine, 1, 1)=="#" then
-    -- Ignore comments.
-  -- This is a parameter file if the entry starts with "@".
-  elseif string.sub(strParameterLine, 1, 1)=="@" then
-    -- Get the filename without the '@'.
-    local strFilename = string.sub(strParameterLine, 2)
-    self.tLogSystem.debug('Processing parameter file "%s".', strFilename)
-    if self.pl.path.exists(strFilename)==nil then
-      self.tLogSystem.fatal('The parameter file "%s" does not exist.', strFilename)
-      tResult = nil
-    else
-      -- Iterate over all lines.
-      for strLine in io.lines(strFilename) do
-        if strLine~=nil then
-          tResult = self:process_one_parameter(strLine, atCliParameters)
-          if tResult~=true then
-            break
-          end
-        end
-      end
-    end
-  else
-    self.tLogSystem.debug('Processing parameter "%s".', strParameterLine)
-    local uiTestCase
-    -- Try to parse the parameter line with a test number ("01:key=value").
-    local strTestCase, strParameterName, strValue = string.match(strParameterLine, "([0-9]+):([0-9a-zA-Z_]+)=(.*)")
-    if strTestCase==nil then
-      -- Try to parse the parameter line with a test name ("EthernetTest:key=value").
-      strTestCase, strParameterName, strValue = string.match(strParameterLine, "([0-9a-zA-Z_]+):([0-9a-zA-Z_]+)=(.*)")
-      if strTestCase==nil then
-        self.tLogSystem.fatal("The parameter definition has an invalid format: '%s'", strParameterLine)
+  -- Process all lines which are not..
+  --  the "end of file" marker,
+  --  empty,
+  --  starting with a '#' (this is used in parameter files).
+  if strParameterLine~=nil and
+     string.len(strParameterLine)~=0 and
+     string.sub(strParameterLine, 1, 1)~="#" then
+
+    -- This is a parameter file if the entry starts with "@".
+    if string.sub(strParameterLine, 1, 1)=="@" then
+      -- Get the filename without the '@'.
+      local strFilename = string.sub(strParameterLine, 2)
+      self.tLogSystem.debug('Processing parameter file "%s".', strFilename)
+      if self.pl.path.exists(strFilename)==nil then
+        self.tLogSystem.fatal('The parameter file "%s" does not exist.', strFilename)
         tResult = nil
       else
-        if strTestCase=='system' then
-          uiTestCase = 0
-        else
-          -- Get the number for the test case name.
-          uiTestCase = self:get_module_index(strTestCase)
-          if uiTestCase==nil then
-            self.tLogSystem.fatal('The parameter "%s" uses an unknown test name: "%s".', strParameterLine, strTestCase)
-            tResult = nil
+        -- Iterate over all lines.
+        for strLine in io.lines(strFilename) do
+          if strLine~=nil then
+            tResult = self:process_one_parameter(strLine, atCliParameters)
+            if tResult~=true then
+              break
+            end
           end
         end
       end
     else
-      uiTestCase = tonumber(strTestCase)
-      if uiTestCase==nil then
-        self.tLogSystem.fatal('The parameter "%s" uses an invalid number for the test index: "%s".', strParameterLine, strTestCase)
-        tResult = nil
+      self.tLogSystem.debug('Processing parameter "%s".', strParameterLine)
+      local uiTestCase
+      -- Try to parse the parameter line with a test number ("01:key=value").
+      local strTestCase, strParameterName, strValue = string.match(strParameterLine, "([0-9]+):([0-9a-zA-Z_]+)=(.*)")
+      if strTestCase==nil then
+        -- Try to parse the parameter line with a test name ("EthernetTest:key=value").
+        strTestCase, strParameterName, strValue = string.match(strParameterLine, "([0-9a-zA-Z_]+):([0-9a-zA-Z_]+)=(.*)")
+        if strTestCase==nil then
+          self.tLogSystem.fatal("The parameter definition has an invalid format: '%s'", strParameterLine)
+          tResult = nil
+        else
+          if strTestCase=='system' then
+            uiTestCase = 0
+          else
+            -- Get the number for the test case name.
+            uiTestCase = self:get_module_index(strTestCase)
+            if uiTestCase==nil then
+              self.tLogSystem.fatal(
+                'The parameter "%s" uses an unknown test name: "%s".',
+                strParameterLine,
+                strTestCase
+              )
+              tResult = nil
+            end
+          end
+        end
+      else
+        uiTestCase = tonumber(strTestCase)
+        if uiTestCase==nil then
+          self.tLogSystem.fatal(
+            'The parameter "%s" uses an invalid number for the test index: "%s".',
+            strParameterLine,
+            strTestCase
+          )
+          tResult = nil
+        end
       end
-    end
 
-    if tResult~=nil then
-      table.insert(atCliParameters, {id=uiTestCase, name=strParameterName, value=strValue})
+      if tResult~=nil then
+        table.insert(atCliParameters, {id=uiTestCase, name=strParameterName, value=strValue})
+      end
     end
   end
 
@@ -636,12 +686,22 @@ function TestSystem:collect_parameters()
           -- Does the parameter exist?
           tParameter = atParametersModule[strParameterName]
           if tParameter==nil then
-            self.tLogSystem.fatal('The parameter "%s" does not exist in test case %d (%s).', strParameterName, uiTestIndex, strTestCaseName)
+            self.tLogSystem.fatal(
+              'The parameter "%s" does not exist in test case %d (%s).',
+              strParameterName,
+              uiTestIndex,
+              strTestCaseName
+            )
             tResult = nil
             break
           -- Is the parameter an "output"?
           elseif tParameter.fIsOutput==true then
-            self.tLogSystem.fatal('The parameter "%s" in test case %d (%s) is an output.', strParameterName, uiTestIndex, strTestCaseName)
+            self.tLogSystem.fatal(
+              'The parameter "%s" in test case %d (%s) is an output.',
+              strParameterName,
+              uiTestIndex,
+              strTestCaseName
+            )
             tResult = nil
             break
           else
@@ -652,7 +712,12 @@ function TestSystem:collect_parameters()
               -- This is a connection to another value or an output parameter.
               local strClass, strName = string.match(strParameterConnection, '^([^:]+):(.+)')
               if strClass==nil then
-                self.tLogSystem.fatal('Parameter "%s" of test %d has an invalid connection "%s".', strParameterName, uiTestIndex, strParameterConnection)
+                self.tLogSystem.fatal(
+                  'Parameter "%s" of test %d has an invalid connection "%s".',
+                  strParameterName,
+                  uiTestIndex,
+                  strParameterConnection
+                )
                 tResult = nil
                 break
               else
@@ -674,7 +739,11 @@ function TestSystem:collect_parameters()
                     -- The class is no number. Search the name.
                     uiConnectionTargetTestCase = self:get_module_index(strClass)
                     if uiConnectionTargetTestCase==nil then
-                      self.tLogSystem.fatal('The connection "%s" uses an unknown test name: "%s".', strParameterConnection, strClass)
+                      self.tLogSystem.fatal(
+                        'The connection "%s" uses an unknown test name: "%s".',
+                        strParameterConnection,
+                        strClass
+                      )
                       tResult = nil
                       break
                     end
@@ -683,18 +752,32 @@ function TestSystem:collect_parameters()
                     -- Get the target module.
                     local tTargetModule = self.atModules[uiConnectionTargetTestCase]
                     if tTargetModule==nil then
-                      self.tLogSystem.info('Ignoring the connection "%s" to an inactive target: "%s".', strParameterConnection, strClass)
+                      self.tLogSystem.info(
+                        'Ignoring the connection "%s" to an inactive target: "%s".',
+                        strParameterConnection,
+                        strClass
+                      )
                     else
                       -- Get the parameter list of the target module.
                       local atTargetParameters = tTargetModule.atParameter or {}
                       -- Does the target module have a matching parameter?
                       local tTargetParameter = atTargetParameters[strName]
                       if tTargetParameter==nil then
-                        self.tLogSystem.fatal('The connection "%s" uses a non-existing parameter at the target: "%s".', strParameterConnection, strName)
+                        self.tLogSystem.fatal(
+                          'The connection "%s" uses a non-existing parameter at the target: "%s".',
+                          strParameterConnection,
+                          strName
+                        )
                         tResult = nil
                         break
                       else
-                        self.tLogSystem.info('Connecting %02d:%s to %02d:%s .', uiTestIndex, strParameterName, uiConnectionTargetTestCase, tTargetParameter.strName)
+                        self.tLogSystem.info(
+                          'Connecting %02d:%s to %02d:%s .',
+                          uiTestIndex,
+                          strParameterName,
+                          uiConnectionTargetTestCase,
+                          tTargetParameter.strName
+                        )
                         tParameter:connect(tTargetParameter)
                       end
                     end
@@ -711,7 +794,12 @@ function TestSystem:collect_parameters()
     for _, tParam in pairs(atCliParameters) do
       local uiModuleId = tParam.id
       local strParameterName = tParam.name
-      self.tLogSystem.debug('Apply CLI parameter for module #%d, "%s"="%s".', uiModuleId, strParameterName, tParam.value)
+      self.tLogSystem.debug(
+        'Apply CLI parameter for module #%d, "%s"="%s".',
+        uiModuleId,
+        strParameterName,
+        tParam.value
+      )
 
       -- Get the module.
       local tModule
@@ -894,7 +982,15 @@ function TestSystem:run_tests(tPackageInfo)
 		end
 
         -- Execute the test code. Write a stack trace to the debug logger if the test case crashes.
-        local fStatus, tResult = xpcall(function() tModule:run() end, function(tErr) tLogSystem.debug(debug.traceback()) return tErr end)
+        local fStatus, tResult = xpcall(
+          function()
+            tModule:run()
+          end,
+          function(tErr)
+            tLogSystem.debug(debug.traceback())
+            return tErr
+          end
+        )
         if not fStatus then
           local strError
           if tResult~=nil then
@@ -914,7 +1010,12 @@ function TestSystem:run_tests(tPackageInfo)
           if tParameter.fIsOutput==true then
             local fValid, strError = tParameter:validate()
             if fValid==false then
-              tLogSystem.warning('Failed to validate the output parameter %02d:%s : %s', uiTestCase, strTestCaseName, strError)
+              tLogSystem.warning(
+                'Failed to validate the output parameter %02d:%s : %s',
+                uiTestCase,
+                strTestCaseName,
+                strError
+              )
             end
           end
         end
@@ -1012,7 +1113,11 @@ function TestSystem:showPackageInformation()
     local strError
     tPackageInfo, strError = pl.config.read(strPackageInfoFile)
     if tPackageInfo==nil then
-      tLog.warning('No version information available. The package file "%s" is invalid: %s', strPackageInfoFile, strError)
+      tLog.warning(
+        'No version information available. The package file "%s" is invalid: %s',
+        strPackageInfoFile,
+        strError
+      )
     else
       -- Check for the required fields.
       local astrRequiredFields = {
@@ -1031,7 +1136,10 @@ function TestSystem:showPackageInformation()
         end
       end
       if fAllRequiredFieldsOk~=true then
-        tLog.warning('No version information available. Some required fields are missing in the package info file "%s".', strPackageInfoFile)
+        tLog.warning(
+          'No version information available. Some required fields are missing in the package info file "%s".',
+          strPackageInfoFile
+        )
         tPackageInfo = nil
       else
         tLog.info('Package info:')
@@ -1089,7 +1197,8 @@ function TestSystem:checkIntegrity()
           local tState = mhash.mhash_state()
           tState:init(tHashID)
           -- Try to open the file.
-          local tFile, strError = io.open(strFile, 'rb')
+          local tFile
+          tFile, strError = io.open(strFile, 'rb')
           if tFile==nil then
             tLog.warning('Integrity error: failed to open the file "%s": %s', strFile, strError)
             fIntegrityOk = false
