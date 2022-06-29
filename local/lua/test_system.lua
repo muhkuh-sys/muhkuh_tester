@@ -157,13 +157,14 @@ end
 
 
 function TestSystem:collect_testcases()
+  local tLogSystem = self.tLogSystem
   local tTestDescription = self.tTestDescription
   local tResult = true
 
   for _, uiTestCase in ipairs(self.auiTests) do
     -- Does a test with this number already exist?
     if self.atModules[uiTestCase]~=nil then
-      self.tLogSystem.fatal('More than one test with the index %d exists.', uiTestCase)
+      tLogSystem.fatal('More than one test with the index %d exists.', uiTestCase)
       tResult = nil
       break
     end
@@ -179,9 +180,9 @@ function TestSystem:collect_testcases()
     local strDefinitionId = tTestDescription:getTestCaseName(uiTestCase)
     local strModuleId = tModule.CFG_strTestName
     if strModuleId~=strDefinitionId then
-      self.tLogSystem.fatal('The ID of test %d differs between the test definition and the module.', uiTestCase)
-      self.tLogSystem.debug('The ID of test %d in the test definition is "%s".', uiTestCase, strDefinitionId)
-      self.tLogSystem.debug('The ID of test %d in the module is "%s".', uiTestCase, strModuleId)
+      tLogSystem.fatal('The ID of test %d differs between the test definition and the module.', uiTestCase)
+      tLogSystem.debug('The ID of test %d in the test definition is "%s".', uiTestCase, strDefinitionId)
+      tLogSystem.debug('The ID of test %d in the module is "%s".', uiTestCase, strModuleId)
       tResult = nil
       break
     end
@@ -558,6 +559,7 @@ end
 
 
 function TestSystem:process_one_parameter(strParameterLine, atCliParameters)
+  local tLogSystem = self.tLogSystem
   local tResult = true
 
   -- Process all lines which are not..
@@ -572,9 +574,9 @@ function TestSystem:process_one_parameter(strParameterLine, atCliParameters)
     if string.sub(strParameterLine, 1, 1)=="@" then
       -- Get the filename without the '@'.
       local strFilename = string.sub(strParameterLine, 2)
-      self.tLogSystem.debug('Processing parameter file "%s".', strFilename)
+      tLogSystem.debug('Processing parameter file "%s".', strFilename)
       if self.pl.path.exists(strFilename)==nil then
-        self.tLogSystem.fatal('The parameter file "%s" does not exist.', strFilename)
+        tLogSystem.fatal('The parameter file "%s" does not exist.', strFilename)
         tResult = nil
       else
         -- Iterate over all lines.
@@ -588,7 +590,7 @@ function TestSystem:process_one_parameter(strParameterLine, atCliParameters)
         end
       end
     else
-      self.tLogSystem.debug('Processing parameter "%s".', strParameterLine)
+      tLogSystem.debug('Processing parameter "%s".', strParameterLine)
       local uiTestCase
       -- Try to parse the parameter line with a test number ("01:key=value").
       local strTestCase, strParameterName, strValue = string.match(strParameterLine, "([0-9]+):([0-9a-zA-Z_]+)=(.*)")
@@ -596,7 +598,7 @@ function TestSystem:process_one_parameter(strParameterLine, atCliParameters)
         -- Try to parse the parameter line with a test name ("EthernetTest:key=value").
         strTestCase, strParameterName, strValue = string.match(strParameterLine, "([0-9a-zA-Z_]+):([0-9a-zA-Z_]+)=(.*)")
         if strTestCase==nil then
-          self.tLogSystem.fatal("The parameter definition has an invalid format: '%s'", strParameterLine)
+          tLogSystem.fatal("The parameter definition has an invalid format: '%s'", strParameterLine)
           tResult = nil
         else
           if strTestCase=='system' then
@@ -605,7 +607,7 @@ function TestSystem:process_one_parameter(strParameterLine, atCliParameters)
             -- Get the number for the test case name.
             uiTestCase = self:get_module_index(strTestCase)
             if uiTestCase==nil then
-              self.tLogSystem.fatal(
+              tLogSystem.fatal(
                 'The parameter "%s" uses an unknown test name: "%s".',
                 strParameterLine,
                 strTestCase
@@ -617,7 +619,7 @@ function TestSystem:process_one_parameter(strParameterLine, atCliParameters)
       else
         uiTestCase = tonumber(strTestCase)
         if uiTestCase==nil then
-          self.tLogSystem.fatal(
+          tLogSystem.fatal(
             'The parameter "%s" uses an invalid number for the test index: "%s".',
             strParameterLine,
             strTestCase
@@ -638,6 +640,7 @@ end
 
 
 function TestSystem:collect_parameters()
+  local tLogSystem = self.tLogSystem
   local tTestDescription = self.tTestDescription
   local tResult = true
 
@@ -655,7 +658,7 @@ function TestSystem:collect_parameters()
     -- Is this a system parameter?
     if tParam.id==0 then
       -- Set the parameter.
-      self.tLogSystem.debug('Setting system parameter "%s" to %s.', tParam.name, tParam.value)
+      tLogSystem.debug('Setting system parameter "%s" to %s.', tParam.name, tParam.value)
       self.m_atSystemParameter[tParam.name] = tParam.value
     end
   end
@@ -671,7 +674,7 @@ function TestSystem:collect_parameters()
       local strTestCaseName = astrTestNames[uiTestIndex]
 
       if tModule==nil then
-        self.tLogSystem.debug('Skipping deactivated test %02d:%s .', uiTestIndex, strTestCaseName)
+        tLogSystem.debug('Skipping deactivated test %02d:%s .', uiTestIndex, strTestCaseName)
       else
         -- Get the parameters for the module.
         local atParametersModule = tModule.atParameter or {}
@@ -686,7 +689,7 @@ function TestSystem:collect_parameters()
           -- Does the parameter exist?
           tParameter = atParametersModule[strParameterName]
           if tParameter==nil then
-            self.tLogSystem.fatal(
+            tLogSystem.fatal(
               'The parameter "%s" does not exist in test case %d (%s).',
               strParameterName,
               uiTestIndex,
@@ -696,7 +699,7 @@ function TestSystem:collect_parameters()
             break
           -- Is the parameter an "output"?
           elseif tParameter.fIsOutput==true then
-            self.tLogSystem.fatal(
+            tLogSystem.fatal(
               'The parameter "%s" in test case %d (%s) is an output.',
               strParameterName,
               uiTestIndex,
@@ -712,7 +715,7 @@ function TestSystem:collect_parameters()
               -- This is a connection to another value or an output parameter.
               local strClass, strName = string.match(strParameterConnection, '^([^:]+):(.+)')
               if strClass==nil then
-                self.tLogSystem.fatal(
+                tLogSystem.fatal(
                   'Parameter "%s" of test %d has an invalid connection "%s".',
                   strParameterName,
                   uiTestIndex,
@@ -725,7 +728,7 @@ function TestSystem:collect_parameters()
                 if strClass=='system' then
                   local tValue = self.m_atSystemParameter[strName]
                   if tValue==nil then
-                    self.tLogSystem.fatal('The connection target "%s" has an unknown name.', strParameterConnection)
+                    tLogSystem.fatal('The connection target "%s" has an unknown name.', strParameterConnection)
                     tResult = nil
                     break
                   else
@@ -739,7 +742,7 @@ function TestSystem:collect_parameters()
                     -- The class is no number. Search the name.
                     uiConnectionTargetTestCase = self:get_module_index(strClass)
                     if uiConnectionTargetTestCase==nil then
-                      self.tLogSystem.fatal(
+                      tLogSystem.fatal(
                         'The connection "%s" uses an unknown test name: "%s".',
                         strParameterConnection,
                         strClass
@@ -752,7 +755,7 @@ function TestSystem:collect_parameters()
                     -- Get the target module.
                     local tTargetModule = self.atModules[uiConnectionTargetTestCase]
                     if tTargetModule==nil then
-                      self.tLogSystem.info(
+                      tLogSystem.info(
                         'Ignoring the connection "%s" to an inactive target: "%s".',
                         strParameterConnection,
                         strClass
@@ -763,7 +766,7 @@ function TestSystem:collect_parameters()
                       -- Does the target module have a matching parameter?
                       local tTargetParameter = atTargetParameters[strName]
                       if tTargetParameter==nil then
-                        self.tLogSystem.fatal(
+                        tLogSystem.fatal(
                           'The connection "%s" uses a non-existing parameter at the target: "%s".',
                           strParameterConnection,
                           strName
@@ -771,7 +774,7 @@ function TestSystem:collect_parameters()
                         tResult = nil
                         break
                       else
-                        self.tLogSystem.info(
+                        tLogSystem.info(
                           'Connecting %02d:%s to %02d:%s .',
                           uiTestIndex,
                           strParameterName,
@@ -794,7 +797,7 @@ function TestSystem:collect_parameters()
     for _, tParam in pairs(atCliParameters) do
       local uiModuleId = tParam.id
       local strParameterName = tParam.name
-      self.tLogSystem.debug(
+      tLogSystem.debug(
         'Apply CLI parameter for module #%d, "%s"="%s".',
         uiModuleId,
         strParameterName,
@@ -807,18 +810,18 @@ function TestSystem:collect_parameters()
       if uiModuleId~=0 then
         tModule = self.atModules[uiModuleId]
         if tModule==nil then
-          self.tLogSystem.fatal('No module with index %d found.', uiModuleId)
+          tLogSystem.fatal('No module with index %d found.', uiModuleId)
           tResult = nil
           break
         else
           -- Get the parameter.
           local tParameter = tModule.atParameter[strParameterName]
           if tParameter==nil then
-            self.tLogSystem.fatal('Module %d has no parameter "%s".', uiModuleId, strParameterName)
+            tLogSystem.fatal('Module %d has no parameter "%s".', uiModuleId, strParameterName)
             tResult = nil
             break
           elseif tParameter.fIsOutput==true then
-            self.tLogSystem.fatal('The parameter %02d:%s is an output parameter.', uiModuleId, strParameterName)
+            tLogSystem.fatal('The parameter %02d:%s is an output parameter.', uiModuleId, strParameterName)
             tResult = nil
             break
           else
@@ -836,6 +839,7 @@ end
 
 
 function TestSystem:check_parameters()
+  local tLogSystem = self.tLogSystem
   local tTestDescription = self.tTestDescription
 
   -- Check all parameters.
@@ -851,23 +855,23 @@ function TestSystem:check_parameters()
     local strTestCaseName = astrTestNames[uiTestIndex]
 
     if tModule==nil then
-      self.tLogSystem.debug('Skipping deactivated test %02d:%s .', uiTestIndex, strTestCaseName)
+      tLogSystem.debug('Skipping deactivated test %02d:%s .', uiTestIndex, strTestCaseName)
     else
       -- Get the parameters for the module.
       for _, tParameter in ipairs(tModule.CFG_aParameterDefinitions) do
         -- Ignore output parameter. They will be set when the test is executed.
         if tParameter.fIsOutput==true then
-          self.tLogSystem.debug('Ignoring output parameter %02d:%s .', uiTestIndex, tParameter.strName)
+          tLogSystem.debug('Ignoring output parameter %02d:%s .', uiTestIndex, tParameter.strName)
 
         -- Ignore also parameters connected to something. They might get their values when the test is executed.
         elseif tParameter:isConnected()==true then
-          self.tLogSystem.debug('Ignoring the connected parameter %02d:%s .', uiTestIndex, tParameter.strName)
+          tLogSystem.debug('Ignoring the connected parameter %02d:%s .', uiTestIndex, tParameter.strName)
 
         else
           -- Validate the parameter.
           local fValid, strError = tParameter:validate()
           if fValid==false then
-            self.tLogSystem.fatal('The parameter %02d:%s is invalid: %s', uiTestIndex, tParameter.strName, strError)
+            tLogSystem.fatal('The parameter %02d:%s is invalid: %s', uiTestIndex, tParameter.strName, strError)
             fParametersOk = false
           end
         end
@@ -876,7 +880,7 @@ function TestSystem:check_parameters()
   end
 
   if fParametersOk==false then
-    self.tLogSystem.fatal('One or more parameters were invalid. Not running the tests!')
+    tLogSystem.fatal('One or more parameters were invalid. Not running the tests!')
   end
 
   return fParametersOk
@@ -1238,26 +1242,26 @@ end
 
 --- Initialize the remote debugger and test the connection
 function TestSystem:init_Debugger()
-	local tLogSystem = self.tLogSystem
+  local tLogSystem = self.tLogSystem
 
-	if self.tDebugParam ~= nil then
-	-- Try to load the remote debugger.
-		local tResult, tLuaPanda = pcall(require, 'LuaPanda')
-		if tResult ~= true then
-			tLogSystem.error("Unable to load the debugger.")
-		else
-			-- start the client with the given IP and port number
-			tLuaPanda.start(self.tDebugParam.IP,self.tDebugParam.Port)
+  if self.tDebugParam ~= nil then
+  -- Try to load the remote debugger.
+    local tResult, tLuaPanda = pcall(require, 'LuaPanda')
+    if tResult ~= true then
+      tLogSystem.error("Unable to load the debugger.")
+    else
+      -- start the client with the given IP and port number
+      tLuaPanda.start(self.tDebugParam.IP,self.tDebugParam.Port)
 
-			-- check the connection
-			tResult = tLuaPanda.isConnected()
-			if tResult ~= true then
-				tLogSystem.error("No connection to the debugger established.")
-			else
-				self.tLuaPanda = tLuaPanda
-			end
-		end
-	end
+      -- check the connection
+      tResult = tLuaPanda.isConnected()
+      if tResult ~= true then
+        tLogSystem.error("No connection to the debugger established.")
+      else
+        self.tLuaPanda = tLuaPanda
+      end
+    end
+  end
 end
 
 
