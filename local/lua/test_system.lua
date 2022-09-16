@@ -1052,8 +1052,12 @@ function TestSystem:run_tests(tPackageInfo)
   tEventTestResult.result = tostring(fTestResult)
   _G.tester:sendLogEvent('muhkuh.test.result', tEventTestResult)
 
-  -- Close the connection to the netX.
-  _G.tester:closeCommonPlugin()
+  -- Close all connections to the netX.
+  if _G.tester.closeAllCommonPlugins~=nil then
+    _G.tester:closeAllCommonPlugins()
+  else
+    _G.tester:closeCommonPlugin()
+  end
 
   -- Print the result in huge letters.
   if fTestResult==true then
