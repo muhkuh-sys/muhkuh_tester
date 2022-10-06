@@ -87,7 +87,7 @@ strArtifact0 = 'lua5.1-muhkuh_tester_cli'
 tArcList0 = atEnv.DEFAULT.ArchiveList('zip')
 
 tArcList0.AddFiles('',
-	'installer/jonchki/lua5.1/install.lua',
+	'installer/jonchki/install.lua',
 	'local/system.lua')
 
 tArcList0.AddFiles('doc/',
@@ -115,7 +115,7 @@ strArtifact1 = 'lua5.4-muhkuh_tester_cli'
 tArcList1 = atEnv.DEFAULT.ArchiveList('zip')
 
 tArcList1.AddFiles('',
-	'installer/jonchki/lua5.4/install.lua',
+	'installer/jonchki/install.lua',
 	'local/system.lua')
 
 tArcList1.AddFiles('doc/',
