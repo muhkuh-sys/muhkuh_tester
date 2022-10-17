@@ -33,37 +33,6 @@ import os.path
 
 #----------------------------------------------------------------------------
 #
-# Build the documentation.
-#
-
-# Get the default attributes.
-aAttribs = atEnv.DEFAULT['ASCIIDOC_ATTRIBUTES']
-# Add some custom attributes.
-aAttribs.update(dict({
-	# Use ASCIIMath formulas.
-	'asciimath': True,
-
-	# Embed images into the HTML file as data URIs.
-	'data-uri': True,
-
-	# Use icons instead of text for markers and callouts.
-	'icons': True,
-
-	# Use numbers in the table of contents.
-	'numbered': True,
-	
-	# Generate a scrollable table of contents on the left of the text.
-	'toc2': True,
-
-	# Use 4 levels in the table of contents.
-	'toclevels': 4
-}))
-
-doc = atEnv.DEFAULT.Asciidoc('targets/doc/org.muhkuh.tools.muhkuh_tester.html', 'README.asciidoc', ASCIIDOC_BACKEND='html5', ASCIIDOC_ATTRIBUTES=aAttribs)
-
-
-#----------------------------------------------------------------------------
-#
 # Add the version numbers to the tester script.
 #
 tTestSystemLua = atEnv.DEFAULT.Version('#targets/lua/test_system.lua', 'local/lua/test_system.lua')
@@ -91,7 +60,10 @@ tArcList0.AddFiles('',
 	'local/system.lua')
 
 tArcList0.AddFiles('doc/',
-	doc)
+	'doc/main.mustache.asciidoc')
+
+tArcList0.AddFiles('doc/org.muhkuh.tools-muhkuh_tester_cli/',
+	'doc/org.muhkuh.tools-muhkuh_tester_cli/main.asciidoc')
 
 tArcList0.AddFiles('lua/',
 	tTestSystemLua)
@@ -119,7 +91,10 @@ tArcList1.AddFiles('',
 	'local/system.lua')
 
 tArcList1.AddFiles('doc/',
-	doc)
+	'doc/main.mustache.asciidoc')
+
+tArcList1.AddFiles('doc/org.muhkuh.tools-muhkuh_tester_cli/',
+	'doc/org.muhkuh.tools-muhkuh_tester_cli/main.asciidoc')
 
 tArcList1.AddFiles('lua/',
 	tTestSystemLua)

@@ -1,0 +1,34 @@
+= {{test_title}}: {{test_subtitle}}
+:data-uri:
+:toc:
+
+This is a command line test using the "Tester CLI" framework. The chapter <<Tester_CLI>> describes how to run tests, set parameters and collect logs.
+
+== Test steps
+
+This chapter decribes all steps in the production test.
+
+{{#test_steps}}
+=== {{name}}
+{{#if}}{{docfile==nil}}
+No documentation
+{{/if}}
+
+{{#if}}{{docfile~=nil}}
+:leveloffset: +3
+{{#import}}{{{docfile}}}{{/import}}
+
+:leveloffset: -3
+{{/if}}
+
+{{/test_steps}}
+
+
+[[Tester_CLI, Tester CLI]]
+== Tester CLI
+
+:leveloffset: +3
+:imagesdir: org.muhkuh.tools-muhkuh_tester_cli
+include::org.muhkuh.tools-muhkuh_tester_cli/main.asciidoc[]
+
+:leveloffset: -3
