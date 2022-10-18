@@ -1,187 +1,6 @@
 local t = ...
 
 
-local class = require 'pl.class'
-
-
-----------------------------------------------------------------------------------------------------------------------
---
--- TestParser
---
-local TestParser = class()
-
-function TestParser:_init(tLog)
-  self.tLog = tLog
-end
-
---- Expat callback function for starting an element.
--- This function is part of the callbacks for the expat parser.
--- It is called when a new element is opened.
--- @param tParser The parser object.
--- @param strName The name of the new element.
-function TestParser.__parseTests_StartElement(tParser, strName, atAttributes)
-  local aLxpAttr = tParser:getcallbacks().userdata
-  local iPosLine, iPosColumn = tParser:pos()
-
-  table.insert(aLxpAttr.atCurrentPath, strName)
-  local strCurrentPath = table.concat(aLxpAttr.atCurrentPath, "/")
-  aLxpAttr.strCurrentPath = strCurrentPath
-
-  if strCurrentPath=='/MuhkuhTest/Testcase' then
-    local strID = atAttributes['id']
-    local strFile = atAttributes['file']
-    local strTestcaseName = atAttributes['name']
-    if (strID==nil or strID=='') and (strFile==nil or strFile=='') then
-      aLxpAttr.tResult = nil
-      aLxpAttr.tLog.error(
-        'Error in line %d, col %d: one of "id" or "file" must be present, but none found.',
-        iPosLine,
-        iPosColumn
-      )
-    elseif (strID~=nil and strID~='') and (strFile~=nil and strFile~='') then
-      aLxpAttr.tResult = nil
-      aLxpAttr.tLog.error(
-        'Error in line %d, col %d: one of "id" or "file" must be present, but both found.',
-        iPosLine,
-        iPosColumn
-      )
-    elseif strTestcaseName==nil or strTestcaseName=='' then
-      aLxpAttr.tResult = nil
-      aLxpAttr.tLog.error('Error in line %d, col %d: missing "name".', iPosLine, iPosColumn)
-    else
-      local tTestCase = {
-        id = strID,
-        file = strFile,
-        name = strTestcaseName,
-        parameter = {}
-      }
-      aLxpAttr.tTestCase = tTestCase
-      aLxpAttr.strParameterName = nil
-      aLxpAttr.strParameterData = nil
-    end
-
-  elseif strCurrentPath=='/MuhkuhTest/Testcase/Parameter' then
-    local strParameterName = atAttributes['name']
-    if strParameterName==nil or strParameterName=='' then
-      aLxpAttr.tResult = nil
-      aLxpAttr.tLog.error('Error in line %d, col %d: missing "name".', iPosLine, iPosColumn)
-    else
-      aLxpAttr.strParameterName = strParameterName
-    end
-  end
-end
-
-
-
---- Expat callback function for closing an element.
--- This function is part of the callbacks for the expat parser.
--- It is called when an element is closed.
--- @param tParser The parser object.
--- @param strName The name of the closed element.
-function TestParser.__parseTests_EndElement(tParser)
-  local aLxpAttr = tParser:getcallbacks().userdata
-  local iPosLine, iPosColumn = tParser:pos()
-
-  local strCurrentPath = aLxpAttr.strCurrentPath
-
-  if strCurrentPath=='/MuhkuhTest/Testcase' then
-    table.insert(aLxpAttr.atTestCases, aLxpAttr.tTestCase)
-    aLxpAttr.tTestCase = nil
-  elseif strCurrentPath=='/MuhkuhTest/Testcase/Parameter' then
-    if aLxpAttr.strParameterName==nil then
-      aLxpAttr.tResult = nil
-      aLxpAttr.tLog.error('Error in line %d, col %d: missing "name".', iPosLine, iPosColumn)
-    elseif aLxpAttr.strParameterData==nil then
-      aLxpAttr.tResult = nil
-      aLxpAttr.tLog.error('Error in line %d, col %d: missing data for parameter.', iPosLine, iPosColumn)
-    else
-      table.insert(aLxpAttr.tTestCase.parameter, {name=aLxpAttr.strParameterName, value=aLxpAttr.strParameterData})
-    end
-  end
-
-  table.remove(aLxpAttr.atCurrentPath)
-  aLxpAttr.strCurrentPath = table.concat(aLxpAttr.atCurrentPath, "/")
-end
-
-
-
---- Expat callback function for character data.
--- This function is part of the callbacks for the expat parser.
--- It is called when character data is parsed.
--- @param tParser The parser object.
--- @param strData The character data.
-function TestParser.__parseTests_CharacterData(tParser, strData)
-  local aLxpAttr = tParser:getcallbacks().userdata
-
-  if aLxpAttr.strCurrentPath=="/MuhkuhTest/Testcase/Parameter" then
-    aLxpAttr.strParameterData = strData
-  end
-end
-
-
-
-function TestParser:parse_tests(strTestsFile)
-  local tLog = self.tLog
-  local tResult = nil
-  local utils = require 'pl.utils'
-
-  -- Read the complete file.
-  local strFileData, strError = utils.readfile(strTestsFile)
-  if strFileData==nil then
-    tLog.error('Failed to read the test configuration file "%s": %s', strTestsFile, strError)
-  else
-    local lxp = require 'lxp'
-
-    local aLxpAttr = {
-      -- Start at root ("/").
-      atCurrentPath = {""},
-      strCurrentPath = nil,
-
-      tTestCase = nil,
-      strParameterName = nil,
-      strParameterData = nil,
-      atTestCases = {},
-
-      tResult = true,
-      tLog = tLog
-    }
-
-    local aLxpCallbacks = {}
-    aLxpCallbacks._nonstrict    = false
-    aLxpCallbacks.StartElement  = self.__parseTests_StartElement
-    aLxpCallbacks.EndElement    = self.__parseTests_EndElement
-    aLxpCallbacks.CharacterData = self.__parseTests_CharacterData
-    aLxpCallbacks.userdata      = aLxpAttr
-
-    local tParser = lxp.new(aLxpCallbacks)
-
-    local tParseResult, strMsg, uiLine, uiCol, uiPos = tParser:parse(strFileData)
-    if tParseResult~=nil then
-      tParseResult, strMsg, uiLine, uiCol, uiPos = tParser:parse()
-      if tParseResult~=nil then
-        tParser:close()
-      end
-    end
-
-    if tParseResult==nil then
-      tLog.error(
-        'Failed to parse the test configuration "%s": %s in line %d, column %d, position %d.',
-        strTestsFile,
-        strMsg,
-        uiLine,
-        uiCol,
-        uiPos
-      )
-    elseif aLxpAttr.tResult~=true then
-      tLog.error('Failed to parse the test configuration.')
-    else
-      tResult = aLxpAttr.atTestCases
-    end
-  end
-
-  return tResult
-end
-
 ----------------------------------------------------------------------------------------------------------------------
 --
 -- ActionTestInstaller
@@ -213,28 +32,32 @@ local function actionTestInstaller(tInstallHelper)
         tResult = nil
       else
         tLog.debug('Parsing tests file "%s".', strTestsFile)
-        local tParser = TestParser(tLog)
-        local atTestCases = tParser:parse_tests(strTestsFile)
-        if atTestCases==nil then
+        local tTestDescription = require 'test_description'(tLog)
+        local tParseResult = tTestDescription:parse(strTestsFile)
+        if tParseResult~=true then
           tLog.error('Failed to parse the test configuration file "%s".', strTestsFile)
           tResult = nil
         else
           -- Run all installer scripts for the test case.
-          for uiTestCaseId, tTestCase in ipairs(atTestCases) do
-            if tTestCase.id~=nil then
+          local uiTestCaseStepMax = tTestDescription:getNumberOfTests()
+          for uiTestCaseStepCnt = 1,uiTestCaseStepMax do
+            local strTestCaseName = tTestDescription:getTestCaseName(uiTestCaseStepCnt)
+            local strTestCaseId = tTestDescription:getTestCaseId(uiTestCaseStepCnt)
+            local strTestCaseFile = tTestDescription:getTestCaseFile(uiTestCaseStepCnt)
+            if strTestCaseId~=nil then
               -- The test ID identifies the artifact providing the test script.
               -- It has the form GROUP.MODULE.ARTIFACT .
 
               -- Get the path to the test case install script in the depack folder.
-              local strDepackPath = tInstallHelper:replace_template(string.format('${depack_path_%s}', tTestCase.id))
+              local strDepackPath = tInstallHelper:replace_template(string.format('${depack_path_%s}', strTestCaseId))
               local strInstallScriptPath = pl.path.join(strDepackPath, 'install_testcase.lua')
               tLog.debug('Run test case install script "%s".', strInstallScriptPath)
               if pl.path.exists(strInstallScriptPath)~=strInstallScriptPath then
                 tLog.error(
                   'The test case install script "%s" for the test %s / %s does not exist.',
                   strInstallScriptPath,
-                  tTestCase.id,
-                  tTestCase.name
+                  strTestCaseId,
+                  strTestCaseName
                 )
                 tResult = nil
                 break
@@ -242,8 +65,8 @@ local function actionTestInstaller(tInstallHelper)
                 tLog.error(
                   'The test case install script "%s" for the test %s / %s is no regular file.',
                   strInstallScriptPath,
-                  tTestCase.id,
-                  tTestCase.name
+                  strTestCaseId,
+                  strTestCaseName
                 )
                 tResult = nil
                 break
@@ -273,7 +96,7 @@ local function actionTestInstaller(tInstallHelper)
                     tInstallHelper:setId('Post Actions')
 
                     -- Call the install script.
-                    tResult, strError = pcall(fnInstall, tInstallHelper, uiTestCaseId, tTestCase.name)
+                    tResult, strError = pcall(fnInstall, tInstallHelper, uiTestCaseStepCnt, strTestCaseName)
                     if tResult~=true then
                       tResult = nil
                       tLog.error('Failed to run the install script "%s": %s', strInstallScriptPath, tostring(strError))
@@ -289,19 +112,21 @@ local function actionTestInstaller(tInstallHelper)
                 end
               end
 
-            elseif tTestCase.file~=nil then
-              local strName = tostring(tTestCase.name)
-
+            elseif strTestCaseFile~=nil then
               -- The test case uses a local starter file.
-              local strStarterFile = pl.path.exists(tTestCase.file)
-              if strStarterFile~=tTestCase.file then
-                tLog.error('The start file "%s" for test %s does not exist.', tostring(tTestCase.file), strName)
+              local strStarterFile = pl.path.exists(strTestCaseFile)
+              if strStarterFile~=strTestCaseFile then
+                tLog.error(
+                  'The start file "%s" for test %s does not exist.',
+                  tostring(strTestCaseFile),
+                  strTestCaseName
+                )
                 tResult = nil
                 break
               end
 
               -- Copy and filter the local file.
-              tLog.debug('Installing local test case with ID %02d and name "%s".', uiTestCaseId, strName)
+              tLog.debug('Installing local test case with ID %02d and name "%s".', uiTestCaseStepCnt, strTestCaseName)
 
               -- Load the starter script.
               local strTestTemplate, strTemplateError = pl.utils.readfile(strStarterFile, false)
@@ -311,14 +136,14 @@ local function actionTestInstaller(tInstallHelper)
                 break
               else
                 local astrReplace = {
-                  ['ID'] = string.format('%02d', uiTestCaseId),
-                  ['NAME'] = strName
+                  ['ID'] = string.format('%02d', uiTestCaseStepCnt),
+                  ['NAME'] = strTestCaseName
                 }
                 local strTestLua = string.gsub(strTestTemplate, '@([^@]+)@', astrReplace)
 
                 -- Write the test script to the installation base directory.
                 local strDestinationPathScript = tInstallHelper:replace_template(
-                  string.format('${install_base}/test%02d.lua', uiTestCaseId)
+                  string.format('${install_base}/test%02d.lua', uiTestCaseStepCnt)
                 )
                 local tFileResult, strFileError = pl.utils.writefile(strDestinationPathScript, strTestLua, false)
                 if tFileResult~=true then
@@ -329,7 +154,7 @@ local function actionTestInstaller(tInstallHelper)
               end
 
             else
-              tLog.error('The test %s has no "id" or "file" attribute.', tostring(tTestCase.name))
+              tLog.error('The test %s has no "id" or "file" attribute.', tostring(strTestCaseName))
               tResult = nil
               break
 
@@ -348,58 +173,6 @@ end
 --
 -- ActionDocBuilder
 --
-
-
---[[
-local function __lustache_checkPaths(strPath)
-  local tLog = __atLustacheConfiguration.tLog
-  local path = require 'pl.path'
-  local strExistingPath
-  -- Is the argument an absolute path?
-  if path.isabs(strPath)==true then
-    if path.exists(strPath)==strPath and path.isfile(strPath)==true then
-      tLog.debug('  Absolute path "%s" exists.', strPath)
-      strExistingPath = strPath
-    else
-      tLog.debug('  Absolute path "%s" does not exists.', strPath)
-    end
-  else
-    -- Loop over all include paths in the configuration.
-    for _, strIncludePath in ipairs(__atLustacheConfiguration.includes) do
-      local strTest = path.join(strIncludePath, strPath)
-      if path.exists(strTest)==strTest and path.isfile(strTest)==true then
-        tLog.debug('  Found "%s".', strTest)
-        strExistingPath = strTest
-        break
-      else
-        tLog.debug('  Not found at "%s".', strTest)
-      end
-    end
-  end
-
-  return strExistingPath
-end
-
-
-
-local function __lustache_searchFile(strId)
-  local tLog = __atLustacheConfiguration.tLog
-  tLog.debug('Search file "%s".', tostring(strId))
-  -- Does the path exist as it is?
-  local strPath = __lustache_checkPaths(strId)
-  if strPath==nil then
-    local path = require 'pl.path'
-    -- Does the ID have an extension?
-    local _, strExt = path.splitext(strId)
-    if strExt=='' then
-      -- The ID has no extension. Append the default one.
-      strPath = __lustache_checkPaths(strId .. __atLustacheConfiguration.ext)
-    end
-  end
-  return strPath
-end
---]]
-
 
 local function __lustache_runInSandbox(atValues, strCode)
   local compat = require 'pl.compat'
@@ -520,35 +293,44 @@ local function actionDocBuilder(tInstallHelper)
     tResult = nil
   else
     tLog.debug('Parsing tests file "%s".', strTestsFile)
-    local tParser = TestParser(tLog)
-    local atTestCases = tParser:parse_tests(strTestsFile)
-    if atTestCases==nil then
+    local tTestDescription = require 'test_description'(tLog)
+    local tParseResult = tTestDescription:parse(strTestsFile)
+    if tParseResult~=true then
       tLog.error('Failed to parse the test configuration file "%s".', strTestsFile)
       tResult = nil
     else
+      atRootView.test_title = tTestDescription:getTitle()
+      atRootView.test_subtitle = tTestDescription:getSubtitle()
+
+      -- Copy all documentation links.
+      atRootView.documentation_links = tTestDescription:getDocuments()
+
       -- Collect the documentation for all test cases.
-      for _, tTestCase in ipairs(atTestCases) do
-        local strName = tostring(tTestCase.name)
+      local uiTestCaseStepMax = tTestDescription:getNumberOfTests()
+      for uiTestCaseStepCnt = 1,uiTestCaseStepMax do
+        local strTestCaseName = tTestDescription:getTestCaseName(uiTestCaseStepCnt)
         local strDocPath
 
-        if tTestCase.id~=nil then
+        local strTestCaseId = tTestDescription:getTestCaseId(uiTestCaseStepCnt)
+        local strTestCaseFile = tTestDescription:getTestCaseFile(uiTestCaseStepCnt)
+        if strTestCaseId~=nil then
           -- Get the path where the source documentation is copied to.
           local strDepackPath = tInstallHelper:replace_template('${build_doc}')
-          strDocPath = pl.path.join(strDepackPath, tTestCase.id, 'teststep' .. atConfiguration.strSuffix)
+          strDocPath = pl.path.join(strDepackPath, strTestCaseId, 'teststep' .. atConfiguration.strSuffix)
           tLog.debug('Looking for documentation in "%s".', strDocPath)
           if pl.path.exists(strDocPath)~=strDocPath then
-            tLog.warning('The test %s has no documentation.', strName)
+            tLog.warning('The test %s has no documentation.', strTestCaseName)
             strDocPath = nil
           end
 
-        elseif tTestCase.file~=nil then
+        elseif strTestCaseFile~=nil then
 
-          strDocPath = tTestCase.doc
+          strDocPath = tTestDescription:getTestCaseDoc(uiTestCaseStepCnt)
           if strDocPath==nil or strDocPath=='' then
-            tLog.warning('The test %s has no documentation.', strName)
+            tLog.warning('The test %s has no documentation.', strTestCaseName)
             strDocPath = nil
           elseif pl.path.exists(strDocPath)~=strDocPath then
-            tLog.warning('The specified documentation "%s" for test %s does not exist.', strDocPath, strName)
+            tLog.warning('The specified documentation "%s" for test %s does not exist.', strDocPath, strTestCaseName)
             strDocPath = nil
           else
             tLog.debug('Found documentation in "%s".', strDocPath)
@@ -556,7 +338,7 @@ local function actionDocBuilder(tInstallHelper)
 
 
         else
-          tLog.error('The test %s has no "id" or "file" attribute.', strName)
+          tLog.error('The test %s has no "id" or "file" attribute.', strTestCaseName)
           tResult = nil
           break
 
@@ -565,10 +347,11 @@ local function actionDocBuilder(tInstallHelper)
         local tParameter = {}
         local tViewAttr = {
           docfile = strDocPath,
-          name = strName,
+          name = strTestCaseName,
           parameter = tParameter
         }
-        for _, tEntry in ipairs(tTestCase.parameter) do
+        local atTestCaseParameter = tTestDescription:getTestCaseParameters(uiTestCaseStepCnt)
+        for _, tEntry in ipairs(atTestCaseParameter) do
           tParameter[tEntry.name] = tEntry.value
         end
 
