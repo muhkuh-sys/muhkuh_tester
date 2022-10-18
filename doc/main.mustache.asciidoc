@@ -24,6 +24,14 @@ No documentation
 {{/test_steps}}
 
 
+[[External_Links, External Links]]
+== External Links
+
+{{#documentation_links}}
+* link:++{{{url}}}++[{{name}}]
+{{/documentation_links}}
+
+
 [[Tester_CLI, Tester CLI]]
 == Tester CLI
 
