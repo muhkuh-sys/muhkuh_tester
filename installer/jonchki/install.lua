@@ -310,19 +310,33 @@ local function actionDocBuilder(tInstallHelper)
       for uiTestCaseStepCnt = 1,uiTestCaseStepMax do
         local strTestCaseName = tTestDescription:getTestCaseName(uiTestCaseStepCnt)
         local strDocPath
+        local strParameterPath
 
         local strTestCaseId = tTestDescription:getTestCaseId(uiTestCaseStepCnt)
         local strTestCaseFile = tTestDescription:getTestCaseFile(uiTestCaseStepCnt)
         if strTestCaseId~=nil then
           -- Get the path where the source documentation is copied to.
-          local strDepackPath = tInstallHelper:replace_template('${build_doc}')
-          strDocPath = pl.path.join(strDepackPath, strTestCaseId, 'teststep' .. atConfiguration.strSuffix)
+          strDocPath = pl.path.join(
+            tInstallHelper:replace_template('${build_doc}'),
+            strTestCaseId,
+            'teststep' .. atConfiguration.strSuffix
+          )
           tLog.debug('Looking for documentation in "%s".', strDocPath)
           if pl.path.exists(strDocPath)~=strDocPath then
             tLog.warning('The test %s has no documentation.', strTestCaseName)
             strDocPath = nil
           end
 
+          -- Get the installation path of the parameter file.
+          strParameterPath = pl.path.join(
+            tInstallHelper:replace_template('${install_base}/parameter/'),
+            strTestCaseId .. '.json'
+          )
+          tLog.debug('Looking for parameter in "%s".', strParameterPath)
+          if pl.path.exists(strParameterPath)~=strParameterPath then
+            tLog.warning('The test %s has no parameter file.', strTestCaseName)
+            strParameterPath = nil
+          end
         elseif strTestCaseFile~=nil then
 
           strDocPath = tTestDescription:getTestCaseDoc(uiTestCaseStepCnt)
@@ -350,9 +364,69 @@ local function actionDocBuilder(tInstallHelper)
           name = strTestCaseName,
           parameter = tParameter
         }
+        -- Set all default parameter.
+        if strParameterPath~=nil then
+          -- Try to read the file.
+          local strParameterData, strParameterReadError = pl.utils.readfile(strParameterPath, false)
+          if strParameterData==nil then
+            tLog.error(
+              'Failed to read the parameter file "%s" for test %s: %s',
+              strParameterPath,
+              strTestCaseName,
+              strParameterReadError
+            )
+          else
+            -- Read the parameter JSON and extract all default values.
+            local cjson = require 'cjson.safe'
+            -- Activate "array" support. This is necessary for the "required" attribute in schemata.
+            cjson.decode_array_with_array_mt(true)
+            -- Read the parameter file.
+            local tParameterData, strParameterParseError = cjson.decode(strParameterData)
+            if tParameterData==nil then
+              tLog.error(
+                'Failed to parse the parameter file "%s" for test %s: %s',
+                strParameterPath,
+                strTestCaseName,
+                strParameterParseError
+              )
+            else
+              -- TODO: validate the parameter data with a schema?
+
+              -- Iterate over all parameters and add them with optional default values to the lookup table.
+              for _, tAttr in ipairs(tParameterData.parameter) do
+                local strName = tAttr.name
+                local tP = {
+                  name = strName
+                }
+                local strDefault = tAttr.default
+                if strDefault~=nil then
+                  tP.type = 'default'
+                  tP.value = strDefault
+                  tP.default = strDefault
+                end
+                tParameter[strName] = tP
+              end
+            end
+          end
+        end
+        -- Add all parameter from the test description.
         local atTestCaseParameter = tTestDescription:getTestCaseParameters(uiTestCaseStepCnt)
         for _, tEntry in ipairs(atTestCaseParameter) do
-          tParameter[tEntry.name] = tEntry.value
+          local strName = tEntry.name
+          local tP = tParameter[strName]
+          if tP==nil then
+            tP = {
+              name = strName
+            }
+            tParameter[strName] = tP
+          end
+          if tEntry.value~=nil then
+            tP.type = 'constant'
+            tP.value = tEntry.value
+          elseif tEntry.connection~=nil then
+            tP.type = 'connection'
+            tP.value = tEntry.connection
+          end
         end
 
         table.insert(atRootView.test_steps, tViewAttr)
