@@ -329,8 +329,8 @@ The parameters for all test cases are shown with the +--show-parameters+ command
  All parameters:
  
    Test case 01: 'RAMTEST_IS42S32200L7BLI'
-     01:general_ctrl<1>  The complete value for the netX general_ctrl register.<2>
-                       default: 0x030d0001<3>
+     01:general_ctrl  The complete value for the netX general_ctrl register. <1><2>
+                       default: 0x030d0001 <3>
 
  ...
 -----------------------------------------------------------------------------
