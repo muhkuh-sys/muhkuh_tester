@@ -1,5 +1,5 @@
 [[About, About]]
-= About
+# About
 
 Muhkuh is a production test utility for the Hilscher netX network controller family.
 There a two different interfaces for the tool: a graphical one and a command line interface. This document describes the command line interface.
@@ -14,19 +14,19 @@ Like LUA the Muhkuh tool is open source. It is hosted on GitHub: https://github.
 
 
 [[Quick_start, Quick start]]
-= Quick start
+# Quick start
 
 This chapter shows how to get the system running very quickly. It references to other chapters for the explanations.
 
 [[Preparations, Preparations]]
-== Preparations
+## Preparations
 
 Usually a command line test is delivered as a ZIP archive. Extract it to a folder of your choice. If you are not sure how to extract a ZIP archive, get 7zip (http://www.7-zip.org/).
 The extraction creates a new subfolder. This subfolder is the called the 'root folder' of the test. The root folder always contains a file called +system.lua+.
 Details on the test structure can be found in the chapter <<System_architecture>>.
 
 [[Show_all_tests_and_their_parameters, Show all tests and their parameters]]
-== Show all tests and their parameters
+## Show all tests and their parameters
 
 Open a command prompt (+cmd.exe+) in this subfolder. Now run the command +lua.exe{nbsp}system.lua{nbsp}--show-parameters+. This shows all available test cases with their parameters.
 The chapter <<Test_case_parameters>> explains this topic in detail.
@@ -59,7 +59,7 @@ The chapter <<Test_case_parameters>> explains this topic in detail.
 -----------------------------------------------------------------------------
 
 [[Run_all_tests, Run all tests]]
-== Run all tests
+## Run all tests
 
 Execute the command +lua.exe system.lua -i ASK+ to run all of the tests with their default parameters. First it shows all available interfaces to a netX hardware and prompts you for the one to use.
 Then the tests are executed. The return code is +0+ if all tests succeeded. It is +1+ if an error occured. The chapter <<Return_codes>> explains this in detail.
@@ -82,7 +82,7 @@ In the simplest case the pattern is a part of the interface name, e.g. +COM10+ i
 -----------------------------------------------------------------------------
 
 [[Run_only_a_selection_of_tests, Run only a selection of tests]]
-== Run only a selection of tests
+## Run only a selection of tests
 
 Select the tests to run by their numeric ID. The ID is shown in the output of the +--show-parameters+ command.
 
@@ -99,7 +99,7 @@ In the example above, the test +RAMTEST_IS42S32200L7BLI+ has the numeric ID +1+.
 -----------------------------------------------------------------------------
 
 [[Run_all_tests_with_modified_parameters, Run all tests with modified parameters]]
-== Run all tests with modified parameters
+## Run all tests with modified parameters
 
 The values for the parameters can be changed with the +-p+ option. It has the form +-p+ _TEST-CASE-ID_$$:$$_PARAMETER_$$=$$_VALUE_ .
 The combination _TEST-CASE-ID_$$:$$_PARAMETER_ can be copied from the output of the +--show-parameters+ command.
@@ -127,11 +127,11 @@ The following example modifies a few parameters of the RAMTEST_IS42S32200L7BLI t
 
 
 [[System_architecture, System architecture]]
-= System architecture
+# System architecture
 
 This chapter gives a quick overview of the Muhkuh system and the tester framework. It is intended for users of the Muhkuh CLI application and therefore does not cover all technical details.
 
-== Muhkuh overview
+## Muhkuh overview
 
 The Muhkuh system is basically an extension for the LUA interpreter. It provides a communication channel from a LUA script to a netX based hardware.
 This means a LUA script running on a standard PC can communicate with a netX board. The communication can use several transport channels like UART, USB or JTAG.
@@ -156,7 +156,7 @@ With these simple building blocks it is possible to construct complex tasks like
 - Execute the SDRAM test function with a CALL command.
 - Read the return code of the test with a READ command.
 
-== The CLI tester
+## The CLI tester
 
 The Muhkuh system also provides a framework to run the test cases. This chapter describes all components of the framework.
 
@@ -202,13 +202,13 @@ If the test case failed, it throws an error, which is then catched by the +test_
 
 
 [[User_Interface, User Interface]]
-= User Interface
+# User Interface
 
 This chapter describes the user interface. It shows how to run the program in the chapter <<Running_Muhkuh_CLI>> and describes all command line arguments in the chapter <<The_command_line_arguments>>.
 The return codes are explained in chapter <<Return_codes>>.
 
 [[Running_Muhkuh_CLI, Running Muhkuh CLI]]
-== Running Muhkuh CLI
+## Running Muhkuh CLI
 
 To run the test, first change to the folder containing the system script `system.lua`. In the example below this is `C:\muhkuh_console`.
 Then execute the lua interpreter with the system script and parameters as arguments. The example has two arguments: +-i+ and +ASK+. This prompts the user to select an interface to the netX.
@@ -221,7 +221,7 @@ The chapter <<The_command_line_arguments>> has more details on the available com
 -----------------------------------------------------------------------------
 
 [[Return_codes, Return codes]]
-== Return codes
+## Return codes
 
 The script returns a status code to indicate success or error.
 
@@ -231,7 +231,7 @@ A value of +1+ indicates an error in either argument parsing, connection handlin
 If logging was enabled, all problems with the connection handling and the test execution are also written to the log file.
 
 [[The_command_line_arguments, The command line arguments]]
-== The command line arguments
+## The command line arguments
 
 This chapter describes the command line arguments.
 
@@ -264,7 +264,7 @@ _NUMBER_::
 
 
 [[Selecting_the_interface, Selecting_the_interface]]
-== Selecting the interface
+## Selecting the interface
 
 The +-i+ or +--interface+ argument selects the interface to the netX with a pattern.
 The pattern is a regular expression which is applied to the names of all detected interfaces. The first interface with a match is selected. Matching is done with the LUA function +string.match+.
@@ -309,7 +309,7 @@ Select the plugin +romloader_uart_COM1+.
 
 
 [[Test_case_parameters, Test case parameters]]
-== Test case parameters
+## Test case parameters
 
 A good test case checks for one clearly defined functionality.
 A very good test case combines checks for similar functionality and allows the test developer to adapt to the small differences with parameters.
