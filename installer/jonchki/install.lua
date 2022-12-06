@@ -245,13 +245,13 @@ local function __lustache_createView(atConfiguration, atVariables, atExtension)
       })
     end
     local strFilteredFilename = string.sub(
-      strImportFilename,
+      strFile,
       1,
-      string.len(strImportFilename) - string.len(atConfiguration.strSuffix)
+      string.len(strFile) - string.len(atConfiguration.strSuffix)
     ) .. atConfiguration.ext
     local strResult = string.format(
       ':imagesdir: %s\ninclude::%s[]',
-      path.dirname(strImportFilename),
+      path.dirname(strFile),
       strFilteredFilename
     )
 
@@ -317,12 +317,12 @@ local function actionDocBuilder(tInstallHelper)
         if strTestCaseId~=nil then
           -- Get the path where the source documentation is copied to.
           strDocPath = pl.path.join(
-            tInstallHelper:replace_template('${build_doc}'),
             strTestCaseId,
             'teststep' .. atConfiguration.strSuffix
           )
-          tLog.debug('Looking for documentation in "%s".', strDocPath)
-          if pl.path.exists(strDocPath)~=strDocPath then
+          local strDocPathAbs = pl.path.abspath(strDocPath, tInstallHelper:replace_template('${build_doc}'))
+          tLog.debug('Looking for documentation in "%s".', strDocPathAbs)
+          if pl.path.exists(strDocPathAbs)~=strDocPathAbs then
             tLog.warning('The test %s has no documentation.', strTestCaseName)
             strDocPath = nil
           end
