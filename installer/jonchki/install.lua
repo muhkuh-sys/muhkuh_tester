@@ -500,40 +500,67 @@ local function actionDocBuilder(tInstallHelper)
   end
 
   if tResult==true then
+--[[
     -- Create the HTML output folder if it does not exist yet.
     local strHtmlOutputPath = pl.path.join(
       tInstallHelper:replace_template('${build_doc}'),
       'generated',
       'html'
     )
+--]]
+    -- Get the source path.
+    local strAsciidocSourcePath = tInstallHelper:replace_template('${build_doc}')
 
-    -- Build the HTML documentation with AsciiDoctor.
-    local astrCommandHtml = {
+    -- Get the output path for the PDF file.
+    -- NOTE: This must be a path relative to the source path. It is passed to the container, so absolute paths from the
+    --       host OS will not be valid.
+    local strPdfRelativeOutputPath = pl.path.join(
+      'generated',
+      'pdf'
+    )
+
+    -- Set the output file.
+    local strPdfOutputFile = 'main.pdf'
+
+    -- Build the documentation with AsciiDoctor.
+    local astrCommand = {
+      -- Run the command in a container.
+      'podman',
+      'run',
+      -- Remove any existing container instances.
+      '--rm',
+      -- Mount the documentation source path.
+      '-v', string.format('%s:/documents/', strAsciidocSourcePath),
+      -- Use the "docker-asciidoctor" image.
+      'docker.io/asciidoctor/docker-asciidoctor',
+
       'asciidoctor',
 
-      -- Generate HTML5.
-      '--backend', 'html5',
+      -- Require some extensions.
+      '--require', 'asciidoctor-pdf',
+
+      -- Generate a PDF.
+      '--backend', 'pdf',
 
       -- Create an article.
       '--doctype', 'article',
 
-      -- Enable the "Kroki" extension for diagrams.
-      -- TODO: Use a local server.
-      '--require', 'asciidoctor-kroki',
-
-      -- Set the output folder.
-      string.format('--destination-dir=%s', strHtmlOutputPath),
+      -- Set the output file relative to the source path.
+      string.format(
+        '--out-file=%s',
+        pl.path.join(
+          strPdfRelativeOutputPath,
+          strPdfOutputFile
+        )
+      ),
 
       -- Set the input document.
-      pl.path.join(
-        tInstallHelper:replace_template('${build_doc}'),
-        atConfiguration.root .. atConfiguration.ext
-      )
+      atConfiguration.root .. atConfiguration.ext
     }
-    local strCommandHtml = table.concat(astrCommandHtml, ' ')
-    local tResultHtml = os.execute(strCommandHtml)
-    if tResultHtml~=true then
-      error(string.format('Failed to generate the HTML documentation with the command "%s".', strCommandHtml))
+    local strCommand = table.concat(astrCommand, ' ')
+    local tResultDoc = os.execute(strCommand)
+    if tResultDoc~=true then
+      error(string.format('Failed to generate the documentation with the command "%s".', strCommand))
     end
   end
 
