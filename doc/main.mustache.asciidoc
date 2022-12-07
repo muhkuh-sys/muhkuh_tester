@@ -1,6 +1,8 @@
 = {{test_title}}: {{test_subtitle}}
 :data-uri:
 :icons: font
+:source-highlighter: rouge
+:rouge-style: base16.solarized.dark
 :toc:
 
 This is a command line test using the "Tester CLI" framework. The chapter <<Tester_CLI>> describes how to run tests, set parameters and collect logs.
