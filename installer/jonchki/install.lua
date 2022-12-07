@@ -538,6 +538,7 @@ local function actionDocBuilder(tInstallHelper)
 
       -- Require some extensions.
       '--require', 'asciidoctor-pdf',
+      '--require', 'asciidoctor-diagram',
 
       -- Generate a PDF.
       '--backend', 'pdf',
