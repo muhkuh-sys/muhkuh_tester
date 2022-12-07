@@ -59,9 +59,6 @@ tArcList0.AddFiles('',
 	'installer/jonchki/install.lua',
 	'local/system.lua')
 
-tArcList0.AddFiles('doc/',
-	'doc/main.mustache.asciidoc')
-
 tArcList0.AddFiles('doc/org.muhkuh.tools-muhkuh_tester_cli/',
 	'doc/org.muhkuh.tools-muhkuh_tester_cli/main.asciidoc')
 
@@ -89,9 +86,6 @@ tArcList1 = atEnv.DEFAULT.ArchiveList('zip')
 tArcList1.AddFiles('',
 	'installer/jonchki/install.lua',
 	'local/system.lua')
-
-tArcList1.AddFiles('doc/',
-	'doc/main.mustache.asciidoc')
 
 tArcList1.AddFiles('doc/org.muhkuh.tools-muhkuh_tester_cli/',
 	'doc/org.muhkuh.tools-muhkuh_tester_cli/main.asciidoc')
