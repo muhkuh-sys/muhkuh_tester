@@ -18,9 +18,10 @@
 		<dependency group="com.github.moteus" module="lua-log" artifact="lua-log" version="0.1"/>
 		<dependency group="com.github.tieske" module="date" artifact="date" version="2"/>
 		<dependency group="com.github.zeromq" module="lzmq" artifact="lua5.4-lzmq" version="0.4"/>
+		<dependency group="com.github.Tencent" module="LuaPanda" artifact="LuaPanda" version="3.2"/>
 		<dependency group="de.dkolf" module="dkjson" artifact="dkjson" version="2"/>
 		<dependency group="org.muhkuh.lua" module="mhash" artifact="lua5.4-mhash" version="0.9.9.9"/>
-		<dependency group="org.muhkuh.tools" module="muhkuh_tester_asciidoc" artifact="muhkuh_tester_asciidoc" version="0.0"/>
-		<dependency group="com.github.Tencent" module="LuaPanda" artifact="LuaPanda" version="3.2"/>
+		<dependency group="org.muhkuh.tools" module="muhkuh_tester_asciidoc" artifact="muhkuh_tester_asciidoc" version="0"/>
+		<dependency group="org.muhkuh.tools" module="muhkuh_tester_base" artifact="muhkuh_tester_base" version="0"/>
 	</dependencies>
 </jonchki-artifact>
