@@ -34,12 +34,12 @@ Details on the test structure can be found in the chapter <<System_architecture>
 [[Show_all_tests_and_their_parameters, Show all tests and their parameters]]
 === Show all tests and their parameters
 
-Open a command prompt (+cmd.exe+) in this subfolder. Now run the command +lua.exe{nbsp}system.lua{nbsp}--show-parameters+. This shows all available test cases with their parameters.
+Open a shell in this subfolder. Now run the command +./lua5.4{nbsp}system.lua{nbsp}--show-parameters+. This shows all available test cases with their parameters.
 The chapter <<Test_case_parameters>> explains this topic in detail.
 
 .Example output for the +--show-parameter+ command.
 -----------------------------------------------------------------------------
- lua.exe system.lua --show-parameters
+ ./lua5.4 system.lua --show-parameters
  
  All parameters:
  
@@ -67,16 +67,16 @@ The chapter <<Test_case_parameters>> explains this topic in detail.
 [[Run_all_tests, Run all tests]]
 === Run all tests
 
-Execute the command +lua.exe system.lua -i ASK+ to run all of the tests with their default parameters. First it shows all available interfaces to a netX hardware and prompts you for the one to use.
+Execute the command +./lua5.4 system.lua -i ASK+ to run all of the tests with their default parameters. First it shows all available interfaces to a netX hardware and prompts you for the one to use.
 Then the tests are executed. The return code is +0+ if all tests succeeded. It is +1+ if an error occured. The chapter <<Return_codes>> explains this in detail.
 
 [TIP]
-Show the return code in the windows command prompt with +echo %ERRORLEVEL%+.
+Show the return code in the shell with +echo $?+.
 
 
 .Example 1: Run all tests with their default parameters. Ask for the interface.
 -----------------------------------------------------------------------------
- lua.exe system.lua -i ASK
+ ./lua5.4 system.lua -i ASK
 -----------------------------------------------------------------------------
 
 Use a fixed interface by replacing the +-i ASK+ with a pattern for the interface name.
@@ -84,7 +84,7 @@ In the simplest case the pattern is a part of the interface name, e.g. +COM10+ i
 
 .Example 2: Run all tests with their default parameters. Use COM10 for communication with the netX.
 -----------------------------------------------------------------------------
- lua.exe system.lua -i COM10
+ ./lua5.4 system.lua -i COM10
 -----------------------------------------------------------------------------
 
 [[Run_only_a_selection_of_tests, Run only a selection of tests]]
@@ -96,12 +96,12 @@ In the example above, the test +RAMTEST_IS42S32200L7BLI+ has the numeric ID +1+.
 
 .Example 1: Run only the test with the numeric ID 1. Use COM10 for communication with the netX.
 -----------------------------------------------------------------------------
- lua.exe system.lua -i COM10 1
+ ./lua5.4 system.lua -i COM10 1
 -----------------------------------------------------------------------------
 
 .Example 2: Run only the tests with the numeric ID 2 and 5. Use COM10 for communication with the netX.
 -----------------------------------------------------------------------------
- lua.exe system.lua -i COM10 2 5
+ ./lua5.4 system.lua -i COM10 2 5
 -----------------------------------------------------------------------------
 
 [[Run_all_tests_with_modified_parameters, Run all tests with modified parameters]]
@@ -127,7 +127,7 @@ The following example modifies a few parameters of the RAMTEST_IS42S32200L7BLI t
 
 .Example 3: Run all tests with modified parameters.
 -----------------------------------------------------------------------------
- lua.exe system.lua -p 01:loops=4 -p 01:checks=08BIT,16BIT,32BIT,BURST
+ ./lua5.4 system.lua -p 01:loops=4 -p 01:checks=08BIT,16BIT,32BIT,BURST
 -----------------------------------------------------------------------------
 
 
@@ -216,14 +216,14 @@ The return codes are explained in chapter <<Return_codes>>.
 [[Running_Muhkuh_CLI, Running Muhkuh CLI]]
 === Running Muhkuh CLI
 
-To run the test, first change to the folder containing the system script `system.lua`. In the example below this is `C:\muhkuh_console`.
+To run the test, first change to the folder containing the system script `system.lua`. In the example below this is `~/muhkuh_console`.
 Then execute the lua interpreter with the system script and parameters as arguments. The example has two arguments: +-i+ and +ASK+. This prompts the user to select an interface to the netX.
 The chapter <<The_command_line_arguments>> has more details on the available command line arguments.
 
 .Example commands to run Muhkuh
 -----------------------------------------------------------------------------
- cd C:\muhkuh_console
- lua.exe system.lua -i ASK
+ cd ~/muhkuh_console
+ ./lua5.4 system.lua -i ASK
 -----------------------------------------------------------------------------
 
 [[Return_codes, Return codes]]
@@ -330,7 +330,7 @@ The parameters for all test cases are shown with the +--show-parameters+ command
 
 .Example output for the +--show-parameter+ command for the SDRAM test.
 -----------------------------------------------------------------------------
- lua.exe system.lua --show-parameters
+ ./lua5.4 system.lua --show-parameters
  
  All parameters:
  
